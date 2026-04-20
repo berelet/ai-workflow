@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wireframe: Developer Role & Granular Access Control (v2)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f0f0; color: #333; padding: 20px; line-height: 1.4; }
+
+  h1 { font-size: 22px; margin-bottom: 8px; color: #111; }
+  h2 { font-size: 17px; margin: 32px 0 12px; color: #222; border-bottom: 2px solid #aaa; padding-bottom: 4px; }
+  h3 { font-size: 14px; margin: 16px 0 8px; color: #444; }
+  p.note { font-size: 12px; color: #666; margin-bottom: 16px; font-style: italic; }
+
+  .screen { background: #fff; border: 2px solid #999; border-radius: 6px; margin-bottom: 24px; overflow: hidden; }
+  .screen-title { background: #555; color: #fff; padding: 8px 14px; font-size: 13px; font-weight: 600; }
+
+  /* Annotation */
+  .annotation {
+    background: #fffbe6; border: 1px dashed #cca300; border-radius: 4px;
+    padding: 6px 10px; margin: 8px 12px; font-size: 11px; color: #7a6600;
+  }
+  .annotation::before { content: "NOTE: "; font-weight: 700; }
+
+  /* Wireframe elements */
+  .wire-topbar {
+    background: #e0e0e0; display: flex; align-items: center; padding: 8px 12px; gap: 8px;
+    border-bottom: 1px solid #bbb; flex-wrap: wrap;
+  }
+  .wire-topbar .logo { font-weight: 700; font-size: 14px; color: #333; margin-right: 8px; }
+  .wire-tab {
+    background: #ccc; border: 1px solid #aaa; border-radius: 3px; padding: 4px 10px;
+    font-size: 11px; color: #333; cursor: default; white-space: nowrap;
+  }
+  .wire-tab.active { background: #888; color: #fff; border-color: #666; }
+  .wire-tab.hidden-tab {
+    background: #f5c6c6; border: 1px dashed #c44; color: #a33; text-decoration: line-through;
+    position: relative;
+  }
+  .wire-tab.readonly-tab {
+    background: #c6daf5; border: 1px dashed #4477cc; color: #335;
+  }
+  .wire-spacer { flex: 1; }
+  .wire-profile { background: #d0d0d0; border-radius: 3px; padding: 4px 8px; font-size: 11px; }
+
+  /* Content area */
+  .wire-content { padding: 12px; min-height: 120px; }
+
+  /* Gray blocks */
+  .gray-block {
+    background: #e8e8e8; border: 1px solid #ccc; border-radius: 4px; padding: 10px;
+    margin-bottom: 8px; font-size: 11px; color: #555;
+  }
+  .gray-block.highlight { border-color: #888; background: #ddd; }
+
+  /* Cards */
+  .wire-card {
+    background: #f5f5f5; border: 1px solid #ccc; border-radius: 4px; padding: 8px 10px;
+    margin-bottom: 6px; font-size: 11px; display: flex; justify-content: space-between; align-items: center;
+  }
+  .wire-card .card-title { font-weight: 500; }
+  .wire-card .card-actions { display: flex; gap: 4px; }
+  .wire-btn {
+    background: #ccc; border: 1px solid #aaa; border-radius: 3px; padding: 2px 8px;
+    font-size: 10px; color: #333; cursor: default;
+  }
+  .wire-btn.hidden-btn {
+    background: #f5c6c6; border: 1px dashed #c44; color: #a33; text-decoration: line-through;
+  }
+  .wire-btn.primary { background: #b0c4de; border-color: #8aa; }
+  .wire-btn.danger { background: #deb0b0; border-color: #a88; }
+
+  /* Badge */
+  .wire-badge {
+    display: inline-block; padding: 2px 8px; border-radius: 10px;
+    font-size: 10px; font-weight: 600; color: #fff; margin-left: 4px;
+  }
+  .badge-viewer { background: #6b7280; }
+  .badge-developer { background: #3b82f6; }
+  .badge-editor { background: #10b981; }
+  .badge-owner { background: #f59e0b; }
+
+  /* Status badge on cards */
+  .status-badge {
+    display: inline-block; padding: 1px 6px; border-radius: 8px;
+    font-size: 9px; font-weight: 600; color: #fff; margin-left: 4px;
+  }
+  .status-running { background: #f59e0b; }
+  .status-done { background: #10b981; }
+  .status-failed { background: #ef4444; }
+
+  /* Table */
+  .wire-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .wire-table th { background: #e0e0e0; padding: 6px 8px; text-align: left; border-bottom: 2px solid #bbb; font-weight: 600; }
+  .wire-table td { padding: 6px 8px; border-bottom: 1px solid #ddd; vertical-align: middle; }
+
+  /* Dropdown */
+  .wire-select {
+    background: #fff; border: 1px solid #aaa; border-radius: 3px; padding: 3px 6px;
+    font-size: 11px; min-width: 100px;
+  }
+
+  /* Columns layout */
+  .columns { display: flex; gap: 8px; }
+  .column { flex: 1; }
+  .column-header { font-size: 11px; font-weight: 600; color: #666; margin-bottom: 6px; text-align: center; padding: 4px; background: #e8e8e8; border-radius: 3px; }
+
+  /* Legend */
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; margin: 12px 0; padding: 10px; background: #fff; border: 1px solid #ccc; border-radius: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; }
+  .legend-swatch { width: 24px; height: 14px; border-radius: 3px; border: 1px solid #999; }
+  .swatch-visible { background: #ccc; }
+  .swatch-hidden { background: #f5c6c6; border: 1px dashed #c44; }
+  .swatch-readonly { background: #c6daf5; border: 1px dashed #4477cc; }
+
+  /* Comparison grid */
+  .role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 900px) { .role-grid { grid-template-columns: 1fr; } }
+
+  /* 403 block */
+  .wire-403 {
+    background: #fef2f2; border: 2px solid #dc2626; border-radius: 6px;
+    padding: 20px; text-align: center; color: #991b1b; font-size: 13px;
+  }
+  .wire-403 .code { font-size: 32px; font-weight: 700; color: #dc2626; }
+  .wire-403 .msg { margin-top: 4px; font-size: 14px; }
+
+  /* Catalog card */
+  .wire-catalog-card {
+    background: #f9f9f9; border: 1px solid #ddd; border-radius: 6px; padding: 12px;
+    margin-bottom: 8px;
+  }
+  .wire-catalog-card .project-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; }
+  .wire-catalog-card .project-meta { font-size: 10px; color: #888; }
+  .wire-catalog-card .project-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+
+  .role-label { font-size: 11px; font-weight: 600; color: #444; margin-bottom: 4px; }
+
+  /* Section divider */
+  .divider { border: none; border-top: 1px dashed #bbb; margin: 24px 0; }
+
+  /* Dropdown expanded mock */
+  .dropdown-expanded {
+    background: #fff; border: 1px solid #aaa; border-radius: 4px; padding: 0;
+    width: 140px; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  }
+  .dropdown-expanded .dd-item {
+    padding: 6px 10px; border-bottom: 1px solid #eee; cursor: default;
+  }
+  .dropdown-expanded .dd-item:last-child { border-bottom: none; }
+  .dropdown-expanded .dd-item:hover, .dropdown-expanded .dd-item.selected { background: #e8f0fe; }
+  .dropdown-expanded .dd-item.selected { font-weight: 600; }
+
+  /* Checkbox */
+  .wire-checkbox { width: 13px; height: 13px; border: 1px solid #999; border-radius: 2px; display: inline-block; background: #fff; vertical-align: middle; margin-right: 4px; }
+  .wire-checkbox.hidden-chk { background: #f5c6c6; border: 1px dashed #c44; }
+
+  /* Pipeline graph mock */
+  .pipeline-graph {
+    display: flex; align-items: center; gap: 0; padding: 16px; justify-content: center;
+  }
+  .pipeline-node {
+    background: #e0e0e0; border: 2px solid #999; border-radius: 6px; padding: 8px 14px;
+    font-size: 11px; font-weight: 600; text-align: center; min-width: 90px;
+  }
+  .pipeline-node.readonly { border-color: #4477cc; border-style: dashed; background: #e8f0ff; }
+  .pipeline-arrow { font-size: 16px; color: #999; padding: 0 6px; }
+
+  /* Terminal mock */
+  .terminal-mock {
+    background: #1e1e1e; color: #d4d4d4; border-radius: 4px; padding: 12px;
+    font-family: 'Consolas', 'Courier New', monospace; font-size: 12px;
+    min-height: 100px; line-height: 1.6;
+  }
+  .terminal-mock .prompt { color: #569cd6; }
+  .terminal-mock .output { color: #9cdcfe; }
+
+  /* Queue progress bar */
+  .progress-bar-container {
+    background: #e0e0e0; border-radius: 3px; height: 14px; width: 100%; position: relative;
+  }
+  .progress-bar-fill {
+    background: #3b82f6; border-radius: 3px; height: 14px; position: absolute; left: 0; top: 0;
+  }
+  .progress-label {
+    position: absolute; left: 50%; top: 0; transform: translateX(-50%); font-size: 9px; font-weight: 600; color: #333; line-height: 14px;
+  }
+
+  /* Full-width grid for 4-role comparison */
+  .role-grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 12px; }
+  @media (max-width: 1200px) { .role-grid-4 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .role-grid-4 { grid-template-columns: 1fr; } }
+
+  /* Modal mock */
+  .modal-overlay {
+    background: rgba(0,0,0,0.15); border: 1px solid #ccc; border-radius: 6px;
+    padding: 16px; margin: 8px 0;
+  }
+  .modal-header { font-weight: 600; font-size: 13px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #ddd; }
+  .modal-field { margin-bottom: 6px; }
+  .modal-field label { font-size: 10px; color: #666; display: block; margin-bottom: 2px; }
+  .modal-field input, .modal-field textarea {
+    width: 100%; padding: 4px 6px; border: 1px solid #ccc; border-radius: 3px; font-size: 11px;
+    background: #fff;
+  }
+  .modal-field input:disabled, .modal-field textarea:disabled {
+    background: #f0f0f0; color: #999;
+  }
+
+  .toc { background: #fff; border: 1px solid #ccc; border-radius: 4px; padding: 12px 16px; margin-bottom: 20px; }
+  .toc h3 { margin: 0 0 8px; font-size: 13px; }
+  .toc ol { padding-left: 20px; font-size: 12px; line-height: 1.8; }
+  .toc a { color: #2563eb; text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+</style>
+</head>
+<body>
+
+<h1>Wireframe: Роль Developer та гранулярний контроль доступу (v2)</h1>
+<p class="note">Low-fidelity wireframe. Перекреслені червоні елементи -- приховані для вказаної ролі. Сині елементи -- видимі, але read-only. Всі 18 User Stories покриті. Дата: 2026-04-05.</p>
+
+<!-- TABLE OF CONTENTS -->
+<div class="toc">
+  <h3>Зміст</h3>
+  <ol>
+    <li><a href="#sec1">Tab Navigation (по ролях) -- US-17</a></li>
+    <li><a href="#sec2">Board (по ролях) -- US-3, US-4, US-10</a></li>
+    <li><a href="#sec3">Board -- модал задачі (read-only vs edit) -- US-3, US-10</a></li>
+    <li><a href="#sec4">Pipeline tab (по ролях) -- US-4, US-6, US-11</a></li>
+    <li><a href="#sec5">Terminal tab -- US-5</a></li>
+    <li><a href="#sec6">Queue tab (по ролях) -- US-7, US-12</a></li>
+    <li><a href="#sec7">Backlog tab -- US-9</a></li>
+    <li><a href="#sec8">Agents tab (по ролях) -- US-13</a></li>
+    <li><a href="#sec9">Members list (по ролях) -- US-14, US-15, US-16</a></li>
+    <li><a href="#sec10">Role dropdown (owner only) -- US-14, US-16</a></li>
+    <li><a href="#sec11">Catalog badge -- US-16</a></li>
+    <li><a href="#sec12">403 Forbidden -- US-9, US-17</a></li>
+    <li><a href="#sec13">Локалізація ролей -- US-18</a></li>
+    <li><a href="#sec14">Бейджі ролей (кольори) -- US-16</a></li>
+  </ol>
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-swatch swatch-visible"></div> Видимий елемент</div>
+  <div class="legend-item"><div class="legend-swatch swatch-hidden"></div> Прихований (hidden) для ролі</div>
+  <div class="legend-item"><div class="legend-swatch swatch-readonly"></div> Read-only для ролі</div>
+  <div class="legend-item"><span class="wire-badge badge-viewer">Viewer</span> <span class="wire-badge badge-developer">Developer</span> <span class="wire-badge badge-editor">Editor</span> <span class="wire-badge badge-owner">Owner</span> Кольори бейджів</div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec1">1. Dashboard -- Topbar з вкладками (по ролях) [US-17]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER -->
+  <div class="screen">
+    <div class="screen-title">Topbar -- Viewer (6 вкладок)</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab hidden-tab">Backlog</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab hidden-tab">Pipeline</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-tab hidden-tab">Terminal</span>
+      <span class="wire-tab hidden-tab">Transcriber</span>
+      <span class="wire-tab hidden-tab">Queue</span>
+      <span class="wire-tab">Artifacts</span>
+      <span class="wire-tab">Members</span>
+      <span class="wire-tab">Logs</span>
+      <span class="wire-tab hidden-tab">Join Requests</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-viewer">Viewer</span></span>
+    </div>
+    <div class="annotation">
+      Viewer бачить: Board, Archive, Agents, Artifacts, Members, Logs (6 вкладок).
+      Приховані: Backlog, Pipeline, Terminal, Transcriber, Queue, Join Requests, Settings.
+    </div>
+  </div>
+
+  <!-- DEVELOPER -->
+  <div class="screen">
+    <div class="screen-title">Topbar -- Developer (10 вкладок)</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab hidden-tab">Backlog</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab readonly-tab">Pipeline</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-tab">Terminal</span>
+      <span class="wire-tab">Transcriber</span>
+      <span class="wire-tab readonly-tab">Queue</span>
+      <span class="wire-tab">Artifacts</span>
+      <span class="wire-tab">Members</span>
+      <span class="wire-tab">Logs</span>
+      <span class="wire-tab hidden-tab">Join Requests</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-developer">Developer</span></span>
+    </div>
+    <div class="annotation">
+      Developer бачить все що viewer + Pipeline (read-only), Terminal, Transcriber, Queue (read-only). Всього 10.
+      Приховані: Backlog, Join Requests, Settings.
+    </div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="screen">
+    <div class="screen-title">Topbar -- Editor (11 вкладок)</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab">Backlog</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab">Pipeline</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-tab">Terminal</span>
+      <span class="wire-tab">Transcriber</span>
+      <span class="wire-tab">Queue</span>
+      <span class="wire-tab">Artifacts</span>
+      <span class="wire-tab">Members</span>
+      <span class="wire-tab">Logs</span>
+      <span class="wire-tab hidden-tab">Join Requests</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-editor">Editor</span></span>
+    </div>
+    <div class="annotation">
+      Editor бачить все що developer + Backlog. Всього 11. Pipeline та Queue -- повний доступ.
+      Приховані: Join Requests, Settings.
+    </div>
+  </div>
+
+  <!-- OWNER -->
+  <div class="screen">
+    <div class="screen-title">Topbar -- Owner (13 вкладок)</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab">Backlog</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab">Pipeline</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-tab">Terminal</span>
+      <span class="wire-tab">Transcriber</span>
+      <span class="wire-tab">Queue</span>
+      <span class="wire-tab">Artifacts</span>
+      <span class="wire-tab">Members</span>
+      <span class="wire-tab">Logs</span>
+      <span class="wire-tab">Join Requests</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-owner">Owner</span></span>
+    </div>
+    <div class="annotation">
+      Owner бачить все: 13 вкладок, включаючи Join Requests та Settings.
+      Повний контроль над проектом.
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec2">2. Board -- Kanban (по ролях) [US-3, US-4, US-10]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER BOARD -->
+  <div class="screen">
+    <div class="screen-title">Board -- Viewer (read-only)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;gap:4px;">
+          <span class="wire-btn">Todo (3)</span>
+          <span class="wire-btn">In Progress (1)</span>
+          <span class="wire-btn">Done (2)</span>
+        </div>
+        <span class="wire-btn hidden-btn">Archive all done</span>
+      </div>
+      <div class="wire-btn hidden-btn" style="margin-bottom:8px;max-width:180px">+ New Task</div>
+      <div class="columns">
+        <div class="column">
+          <div class="column-header">Todo</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#1 Setup CI/CD</span>
+              <span class="status-badge status-done">Done</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-checkbox hidden-chk" title="hidden"></span>
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+          <div class="wire-card">
+            <div><span class="card-title">#2 Auth module</span></div>
+            <div class="card-actions">
+              <span class="wire-checkbox hidden-chk" title="hidden"></span>
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">In Progress</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#3 API endpoints</span>
+              <span class="status-badge status-running">Running</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">Done</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#4 DB models</span>
+              <span class="status-badge status-done">Done</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation">
+        Viewer: картки видимі, pipeline status badge видимий (US-4). Всi кнопки дій приховані:
+        + New Task, Run, Delete (X), Archive all done, Checkbox для черги.
+        Клік на картку -- модал read-only (US-3).
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVELOPER BOARD -->
+  <div class="screen">
+    <div class="screen-title">Board -- Developer (read-only, як viewer)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;gap:4px;">
+          <span class="wire-btn">Todo (3)</span>
+          <span class="wire-btn">In Progress (1)</span>
+          <span class="wire-btn">Done (2)</span>
+        </div>
+        <span class="wire-btn hidden-btn">Archive all done</span>
+      </div>
+      <div class="wire-btn hidden-btn" style="margin-bottom:8px;max-width:180px">+ New Task</div>
+      <div class="columns">
+        <div class="column">
+          <div class="column-header">Todo</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#1 Setup CI/CD</span>
+              <span class="status-badge status-done">Done</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-checkbox hidden-chk"></span>
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+          <div class="wire-card">
+            <div><span class="card-title">#2 Auth module</span></div>
+            <div class="card-actions">
+              <span class="wire-checkbox hidden-chk"></span>
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">In Progress</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#3 API endpoints</span>
+              <span class="status-badge status-running">Running</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">Done</div>
+          <div class="wire-card">
+            <div><span class="card-title">#4 DB models</span></div>
+            <div class="card-actions">
+              <span class="wire-btn hidden-btn">Run</span>
+              <span class="wire-btn hidden-btn">X</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation">
+        Developer: Board ідентичний viewer -- всi мутуючі кнопки приховані (US-10).
+        Pipeline status badges відображаються. Фільтри todo/in-progress/done працюють.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR BOARD -->
+  <div class="screen">
+    <div class="screen-title">Board -- Editor (повний доступ)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div style="display:flex;gap:4px;">
+          <span class="wire-btn active">Todo (3)</span>
+          <span class="wire-btn">In Progress (1)</span>
+          <span class="wire-btn">Done (2)</span>
+        </div>
+        <span class="wire-btn">Archive all done</span>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px">
+        <span class="wire-btn primary" style="max-width:180px">+ New Task</span>
+        <span class="wire-btn" style="display:none">Run all (0)</span>
+      </div>
+      <div class="columns">
+        <div class="column">
+          <div class="column-header">Todo</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#1 Setup CI/CD</span>
+              <span class="status-badge status-done">Done</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-checkbox"></span>
+              <span class="wire-btn primary">Run</span>
+              <span class="wire-btn danger">X</span>
+            </div>
+          </div>
+          <div class="wire-card">
+            <div><span class="card-title">#2 Auth module</span></div>
+            <div class="card-actions">
+              <span class="wire-checkbox"></span>
+              <span class="wire-btn primary">Run</span>
+              <span class="wire-btn danger">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">In Progress</div>
+          <div class="wire-card">
+            <div>
+              <span class="card-title">#3 API endpoints</span>
+              <span class="status-badge status-running">Running</span>
+            </div>
+            <div class="card-actions">
+              <span class="wire-btn primary">Run</span>
+              <span class="wire-btn danger">X</span>
+            </div>
+          </div>
+        </div>
+        <div class="column">
+          <div class="column-header">Done</div>
+          <div class="wire-card">
+            <div><span class="card-title">#4 DB models</span></div>
+            <div class="card-actions">
+              <span class="wire-btn primary">Run</span>
+              <span class="wire-btn danger">X</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation">
+        Editor: повний Board з усіма кнопками. New Task, Run, Delete (X), Archive done, Checkbox.
+        Кнопка "Run all" з'являється коли вибрано задачі через checkbox.
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER BOARD -->
+  <div class="screen">
+    <div class="screen-title">Board -- Owner (як Editor, повний доступ)</div>
+    <div class="wire-content">
+      <div class="gray-block" style="text-align:center;padding:20px">
+        Board для Owner ідентичний Editor -- повний доступ до всіх кнопок та дій.
+      </div>
+      <div class="annotation">
+        Owner має ті самі права на Board, що й Editor. Різниця лише в Members management та Settings (інші вкладки).
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec3">3. Board -- Модал задачі (read-only vs edit) [US-3, US-10]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- READ-ONLY modal -->
+  <div class="screen">
+    <div class="screen-title">Модал задачі -- Viewer / Developer (read-only)</div>
+    <div class="wire-content">
+      <div class="modal-overlay">
+        <div class="modal-header">Task #3: API endpoints <span class="status-badge status-running">Running</span></div>
+        <div class="modal-field">
+          <label>Title</label>
+          <input type="text" value="API endpoints" disabled>
+        </div>
+        <div class="modal-field">
+          <label>Description</label>
+          <textarea rows="3" disabled>Implement REST API endpoints for the user module</textarea>
+        </div>
+        <div class="modal-field">
+          <label>Priority</label>
+          <input type="text" value="high" disabled>
+        </div>
+        <div class="modal-field">
+          <label>Status</label>
+          <input type="text" value="in-progress" disabled>
+        </div>
+        <div style="margin-top:8px;text-align:right">
+          <span class="wire-btn">Close</span>
+          <span class="wire-btn hidden-btn">Save</span>
+        </div>
+      </div>
+      <div class="annotation">
+        Viewer/Developer: модал read-only. Всi поля disabled. Кнопка Save прихована.
+        Лише кнопка Close.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDIT modal -->
+  <div class="screen">
+    <div class="screen-title">Модал задачі -- Editor / Owner (editable)</div>
+    <div class="wire-content">
+      <div class="modal-overlay">
+        <div class="modal-header">Task #3: API endpoints <span class="status-badge status-running">Running</span></div>
+        <div class="modal-field">
+          <label>Title</label>
+          <input type="text" value="API endpoints">
+        </div>
+        <div class="modal-field">
+          <label>Description</label>
+          <textarea rows="3">Implement REST API endpoints for the user module</textarea>
+        </div>
+        <div class="modal-field">
+          <label>Priority</label>
+          <select class="wire-select">
+            <option>low</option>
+            <option selected>high</option>
+            <option>critical</option>
+          </select>
+        </div>
+        <div class="modal-field">
+          <label>Status</label>
+          <select class="wire-select">
+            <option>todo</option>
+            <option selected>in-progress</option>
+            <option>done</option>
+          </select>
+        </div>
+        <div style="margin-top:8px;text-align:right">
+          <span class="wire-btn">Close</span>
+          <span class="wire-btn primary">Save</span>
+        </div>
+      </div>
+      <div class="annotation">
+        Editor/Owner: модал editable. Всi поля активні. Кнопки Close та Save.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec4">4. Pipeline tab (по ролях) [US-4, US-6, US-11]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER -- no pipeline tab, only status badge -->
+  <div class="screen">
+    <div class="screen-title">Pipeline -- Viewer (вкладка прихована)</div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">--</div>
+        <div class="msg">Вкладка Pipeline прихована для Viewer</div>
+      </div>
+      <div class="annotation">
+        US-4: Viewer НЕ бачить вкладку Pipeline. Замість цього бачить лише pipeline status badge
+        на картках Board (running/done/failed). GET /pipeline/runs/{id}/logs -- 403.
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVELOPER -- read-only pipeline -->
+  <div class="screen">
+    <div class="screen-title">Pipeline -- Developer (read-only)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Pipeline Configuration</span>
+        <div>
+          <span class="wire-btn hidden-btn">Save Pipeline</span>
+          <span class="wire-btn hidden-btn">Clear</span>
+          <span class="wire-btn hidden-btn">Run</span>
+          <span class="wire-btn hidden-btn">Stop</span>
+        </div>
+      </div>
+
+      <!-- Pipeline graph -->
+      <div class="pipeline-graph">
+        <div class="pipeline-node readonly">PM Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node readonly">BA Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node readonly">Dev Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node readonly">QA Agent</div>
+      </div>
+
+      <div class="gray-block" style="margin-top:8px">
+        <strong>Pipeline Runs (read-only)</strong>
+        <table class="wire-table" style="margin-top:6px">
+          <tr><th>Run #</th><th>Task</th><th>Status</th><th>Started</th><th>Duration</th></tr>
+          <tr><td>42</td><td>#3 API endpoints</td><td><span class="status-badge status-running">Running</span></td><td>12:30</td><td>5m</td></tr>
+          <tr><td>41</td><td>#1 Setup CI/CD</td><td><span class="status-badge status-done">Done</span></td><td>11:00</td><td>12m</td></tr>
+          <tr><td>40</td><td>#4 DB models</td><td><span class="status-badge status-failed">Failed</span></td><td>10:15</td><td>3m</td></tr>
+        </table>
+      </div>
+
+      <div class="gray-block">
+        <strong>Logs -- Run #42 (expanded)</strong>
+        <table class="wire-table" style="margin-top:4px">
+          <tr><th>Stage</th><th>Status</th><th>Duration</th><th>Output</th></tr>
+          <tr><td>PM Agent</td><td><span class="status-badge status-done">Done</span></td><td>2m</td><td style="font-size:10px;color:#666">PRD created, 3 requirements...</td></tr>
+          <tr><td>BA Agent</td><td><span class="status-badge status-done">Done</span></td><td>1m</td><td style="font-size:10px;color:#666">Spec written, 5 ACs...</td></tr>
+          <tr><td>Dev Agent</td><td><span class="status-badge status-running">Running</span></td><td>2m...</td><td style="font-size:10px;color:#666">Working on implementation...</td></tr>
+          <tr><td>QA Agent</td><td style="color:#999">Pending</td><td>--</td><td style="font-size:10px;color:#999">Waiting...</td></tr>
+        </table>
+      </div>
+
+      <div class="annotation">
+        US-6: Developer бачить Pipeline tab з drawflow-графом (read-only, border dashed blue)
+        та повними логами. Кнопки Save/Clear/Run/Stop приховані. Граф non-interactive.
+        US-11: POST /pipeline/run, POST /pipeline/stop, PUT /pipeline/config -- 403.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -- full pipeline -->
+  <div class="screen">
+    <div class="screen-title">Pipeline -- Editor (повний доступ)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Pipeline Configuration</span>
+        <div style="display:flex;gap:4px">
+          <span class="wire-btn primary">Save Pipeline</span>
+          <span class="wire-btn">Clear</span>
+          <span class="wire-btn primary">Run</span>
+          <span class="wire-btn danger">Stop</span>
+        </div>
+      </div>
+
+      <div class="pipeline-graph">
+        <div class="pipeline-node">PM Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node">BA Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node">Dev Agent</div>
+        <span class="pipeline-arrow">&rarr;</span>
+        <div class="pipeline-node">QA Agent</div>
+      </div>
+
+      <div class="gray-block" style="margin-top:8px">
+        <strong>Pipeline Runs</strong>
+        <table class="wire-table" style="margin-top:6px">
+          <tr><th>Run #</th><th>Task</th><th>Status</th><th>Started</th><th>Duration</th></tr>
+          <tr><td>42</td><td>#3 API endpoints</td><td><span class="status-badge status-running">Running</span></td><td>12:30</td><td>5m</td></tr>
+          <tr><td>41</td><td>#1 Setup CI/CD</td><td><span class="status-badge status-done">Done</span></td><td>11:00</td><td>12m</td></tr>
+        </table>
+      </div>
+
+      <div class="annotation">
+        Editor: повний доступ до Pipeline. Граф drag-and-droppable. Всі кнопки присутні.
+        Може зберігати конфігурацію, запускати та зупиняти pipeline.
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER -- same as editor -->
+  <div class="screen">
+    <div class="screen-title">Pipeline -- Owner (як Editor)</div>
+    <div class="wire-content">
+      <div class="gray-block" style="text-align:center;padding:20px">
+        Pipeline для Owner ідентичний Editor -- повний доступ.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec5">5. Terminal tab [US-5]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER -- no terminal -->
+  <div class="screen">
+    <div class="screen-title">Terminal -- Viewer (вкладка прихована)</div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">403</div>
+        <div class="msg">Requires developer role</div>
+      </div>
+      <div class="annotation">
+        US-5 AC-5.4: Viewer НЕ бачить Terminal tab. Прямий запит -- 403.
+      </div>
+    </div>
+  </div>
+
+  <!-- DEVELOPER -- full terminal -->
+  <div class="screen">
+    <div class="screen-title">Terminal -- Developer (повний доступ)</div>
+    <div class="wire-content">
+      <div class="terminal-mock">
+        <div><span class="prompt">user@project:~$</span> ls -la</div>
+        <div class="output">total 48</div>
+        <div class="output">drwxr-xr-x  5 user user 4096 Apr  5 12:00 .</div>
+        <div class="output">drwxr-xr-x  3 user user 4096 Apr  5 11:00 ..</div>
+        <div class="output">-rw-r--r--  1 user user  256 Apr  5 12:00 main.py</div>
+        <div><span class="prompt">user@project:~$</span> _</div>
+      </div>
+      <div style="display:flex;gap:4px;margin-top:6px">
+        <input type="text" style="flex:1;padding:4px 6px;border:1px solid #ccc;border-radius:3px;font-size:11px" placeholder="Enter command or prompt...">
+        <span class="wire-btn primary">Send</span>
+        <span class="wire-btn">Upload</span>
+        <span class="wire-btn danger">Stop</span>
+      </div>
+      <div class="annotation">
+        US-5: Developer має повний доступ до Terminal -- WebSocket, HTTP commands, file upload.
+        Tmux-сесія: user_{id}_project_{id}. Editor та Owner мають такий самий доступ.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec6">6. Queue tab (по ролях) [US-7, US-12]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER -- no queue -->
+  <div class="screen">
+    <div class="screen-title">Queue -- Viewer (вкладка прихована)</div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">403</div>
+        <div class="msg">Requires developer role</div>
+      </div>
+      <div class="annotation">Viewer НЕ бачить Queue tab.</div>
+    </div>
+  </div>
+
+  <!-- DEVELOPER -- read-only queue -->
+  <div class="screen">
+    <div class="screen-title">Queue -- Developer (read-only)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Task Queue</span>
+        <div>
+          <span class="wire-btn hidden-btn">Create Queue</span>
+          <span class="wire-btn hidden-btn">Cancel</span>
+        </div>
+      </div>
+
+      <div class="gray-block">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <strong>Queue #1 -- Sprint tasks</strong>
+          <span class="status-badge status-running">Running</span>
+        </div>
+        <div class="progress-bar-container" style="margin-bottom:6px">
+          <div class="progress-bar-fill" style="width:60%"></div>
+          <span class="progress-label">3/5 tasks</span>
+        </div>
+        <table class="wire-table">
+          <tr><th>#</th><th>Task</th><th>Status</th></tr>
+          <tr><td>1</td><td>#1 Setup CI/CD</td><td><span class="status-badge status-done">Done</span></td></tr>
+          <tr><td>2</td><td>#2 Auth module</td><td><span class="status-badge status-done">Done</span></td></tr>
+          <tr><td>3</td><td>#3 API endpoints</td><td><span class="status-badge status-running">Running</span></td></tr>
+          <tr><td>4</td><td>#5 Tests</td><td style="color:#999">Pending</td></tr>
+          <tr><td>5</td><td>#6 Deploy</td><td style="color:#999">Pending</td></tr>
+        </table>
+      </div>
+
+      <div class="annotation">
+        US-7: Developer бачить список черг, прогрес-бар, статуси задач. Кнопки Create/Cancel приховані.
+        US-12: POST /queue, POST /queue/{id}/run, DELETE /queue/{id} -- 403 для developer.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -- full queue -->
+  <div class="screen">
+    <div class="screen-title">Queue -- Editor (повний доступ)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Task Queue</span>
+        <div style="display:flex;gap:4px">
+          <span class="wire-btn primary">Create Queue</span>
+          <span class="wire-btn danger">Cancel</span>
+        </div>
+      </div>
+
+      <div class="gray-block">
+        <div style="display:flex;justify-content:space-between;margin-bottom:6px">
+          <strong>Queue #1 -- Sprint tasks</strong>
+          <span class="status-badge status-running">Running</span>
+        </div>
+        <div class="progress-bar-container" style="margin-bottom:6px">
+          <div class="progress-bar-fill" style="width:60%"></div>
+          <span class="progress-label">3/5 tasks</span>
+        </div>
+        <table class="wire-table">
+          <tr><th>#</th><th>Task</th><th>Status</th><th>Actions</th></tr>
+          <tr><td>1</td><td>#1 Setup CI/CD</td><td><span class="status-badge status-done">Done</span></td><td></td></tr>
+          <tr><td>2</td><td>#2 Auth module</td><td><span class="status-badge status-done">Done</span></td><td></td></tr>
+          <tr><td>3</td><td>#3 API endpoints</td><td><span class="status-badge status-running">Running</span></td><td><span class="wire-btn danger" style="font-size:9px">Skip</span></td></tr>
+          <tr><td>4</td><td>#5 Tests</td><td style="color:#999">Pending</td><td><span class="wire-btn danger" style="font-size:9px">Remove</span></td></tr>
+          <tr><td>5</td><td>#6 Deploy</td><td style="color:#999">Pending</td><td><span class="wire-btn danger" style="font-size:9px">Remove</span></td></tr>
+        </table>
+      </div>
+
+      <div class="annotation">
+        Editor: повний Queue з кнопками Create, Cancel, Remove, Skip.
+        Owner має ідентичні права.
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER -->
+  <div class="screen">
+    <div class="screen-title">Queue -- Owner (як Editor)</div>
+    <div class="wire-content">
+      <div class="gray-block" style="text-align:center;padding:20px">
+        Queue для Owner ідентичний Editor -- повний доступ.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec7">7. Backlog tab [US-9]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER/DEVELOPER -- no backlog -->
+  <div class="screen">
+    <div class="screen-title">Backlog -- Viewer / Developer (вкладка прихована)</div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">403</div>
+        <div class="msg">Requires editor role</div>
+      </div>
+      <div class="annotation">
+        US-9: Viewer та Developer НЕ бачать вкладку Backlog. Прямий запит до
+        /ui/partials/tabs/backlog -- 403 HTML. POST/PUT/DELETE -- 403 JSON.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -- full backlog -->
+  <div class="screen">
+    <div class="screen-title">Backlog -- Editor (повний доступ)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Backlog</span>
+        <span class="wire-btn primary">+ New Task</span>
+      </div>
+      <table class="wire-table">
+        <tr><th>#</th><th>Title</th><th>Priority</th><th>Created</th><th>Actions</th></tr>
+        <tr>
+          <td>7</td><td>Implement caching</td><td><span class="wire-badge" style="background:#f59e0b">high</span></td>
+          <td>Apr 3</td>
+          <td>
+            <span class="wire-btn primary" style="font-size:9px">Move to Todo</span>
+            <span class="wire-btn" style="font-size:9px">Edit</span>
+            <span class="wire-btn danger" style="font-size:9px">Del</span>
+          </td>
+        </tr>
+        <tr>
+          <td>8</td><td>Add logging</td><td><span class="wire-badge" style="background:#6b7280">low</span></td>
+          <td>Apr 4</td>
+          <td>
+            <span class="wire-btn primary" style="font-size:9px">Move to Todo</span>
+            <span class="wire-btn" style="font-size:9px">Edit</span>
+            <span class="wire-btn danger" style="font-size:9px">Del</span>
+          </td>
+        </tr>
+      </table>
+      <div class="annotation">
+        Editor: повний Backlog з CRUD. New Task, Move to Todo, Edit, Delete.
+        Owner має ідентичні права.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec8">8. Agents tab (по ролях) [US-13]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER/DEVELOPER -- read-only agents -->
+  <div class="screen">
+    <div class="screen-title">Agents -- Viewer / Developer (read-only)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Agents Configuration</span>
+        <div>
+          <span class="wire-btn hidden-btn">+ New Agent</span>
+          <span class="wire-btn hidden-btn">Save</span>
+          <span class="wire-btn hidden-btn">Reset</span>
+        </div>
+      </div>
+
+      <div class="gray-block">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>PM Agent</strong>
+          <span class="wire-btn hidden-btn">Delete</span>
+        </div>
+        <div class="modal-field" style="margin-top:6px">
+          <label>System Prompt</label>
+          <textarea rows="2" disabled style="width:100%;font-size:10px">You are a product manager. Analyze requirements and create PRD...</textarea>
+        </div>
+        <div class="modal-field">
+          <label>Model</label>
+          <input type="text" value="claude-opus-4-6" disabled style="width:100%;font-size:10px">
+        </div>
+      </div>
+
+      <div class="gray-block">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>Dev Agent</strong>
+          <span class="wire-btn hidden-btn">Delete</span>
+        </div>
+        <div class="modal-field" style="margin-top:6px">
+          <label>System Prompt</label>
+          <textarea rows="2" disabled style="width:100%;font-size:10px">You are a senior developer. Implement the solution...</textarea>
+        </div>
+      </div>
+
+      <div class="annotation">
+        US-13: Viewer/Developer бачать конфігурацію агентів read-only. Поля disabled.
+        Кнопки New Agent, Save, Reset, Delete -- приховані.
+        GET /agents -- 200 для всіх ролей.
+      </div>
+    </div>
+  </div>
+
+  <!-- EDITOR -- full agents -->
+  <div class="screen">
+    <div class="screen-title">Agents -- Editor (повний доступ)</div>
+    <div class="wire-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-weight:600;font-size:12px">Agents Configuration</span>
+        <div style="display:flex;gap:4px">
+          <span class="wire-btn primary">+ New Agent</span>
+          <span class="wire-btn primary">Save</span>
+          <span class="wire-btn">Reset</span>
+        </div>
+      </div>
+
+      <div class="gray-block">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <strong>PM Agent</strong>
+          <span class="wire-btn danger">Delete</span>
+        </div>
+        <div class="modal-field" style="margin-top:6px">
+          <label>System Prompt</label>
+          <textarea rows="2" style="width:100%;font-size:10px">You are a product manager. Analyze requirements and create PRD...</textarea>
+        </div>
+        <div class="modal-field">
+          <label>Model</label>
+          <select class="wire-select" style="width:100%">
+            <option selected>claude-opus-4-6</option>
+            <option>claude-sonnet-4-20250514</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="annotation">
+        Editor: повний доступ до Agents. Можна створювати, редагувати, видаляти агентів.
+        Owner має ідентичні права.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec9">9. Members list (по ролях) [US-14, US-15, US-16]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <!-- VIEWER/EDITOR -- read-only members -->
+  <div class="screen">
+    <div class="screen-title">Members -- Viewer / Developer / Editor (read-only)</div>
+    <div class="wire-content">
+      <div style="font-weight:600;font-size:12px;margin-bottom:8px">Project Members</div>
+      <table class="wire-table">
+        <tr><th>User</th><th>Email</th><th>Role</th></tr>
+        <tr>
+          <td>Alice</td><td>alice@example.com</td>
+          <td><span class="wire-badge badge-owner">Owner</span></td>
+        </tr>
+        <tr>
+          <td>Bob</td><td>bob@example.com</td>
+          <td><span class="wire-badge badge-editor">Editor</span></td>
+        </tr>
+        <tr>
+          <td>Charlie</td><td>charlie@example.com</td>
+          <td><span class="wire-badge badge-developer">Developer</span></td>
+        </tr>
+        <tr>
+          <td>Diana</td><td>diana@example.com</td>
+          <td><span class="wire-badge badge-viewer">Viewer</span></td>
+        </tr>
+      </table>
+      <div class="annotation">
+        US-14: Viewer, Developer та Editor бачать Members list з іменами, email та бейджами ролей.
+        Dropdown зміни ролі та кнопка Remove -- ВІДСУТНІ. Лише read-only перегляд.
+        US-16: Бейджі кольорові: viewer=сірий, developer=синій, editor=зелений, owner=золотий.
+      </div>
+    </div>
+  </div>
+
+  <!-- OWNER -- full members management -->
+  <div class="screen">
+    <div class="screen-title">Members -- Owner (повне управління)</div>
+    <div class="wire-content">
+      <div style="font-weight:600;font-size:12px;margin-bottom:8px">Project Members</div>
+      <table class="wire-table">
+        <tr><th>User</th><th>Email</th><th>Role</th><th>Actions</th></tr>
+        <tr>
+          <td>Alice <span style="font-size:9px;color:#888">(you)</span></td>
+          <td>alice@example.com</td>
+          <td>
+            <select class="wire-select" disabled title="Cannot change role of last owner">
+              <option>Viewer</option>
+              <option>Developer</option>
+              <option>Editor</option>
+              <option selected>Owner</option>
+            </select>
+          </td>
+          <td><span class="wire-btn" style="opacity:0.5;cursor:not-allowed" title="Cannot remove last owner">Remove</span></td>
+        </tr>
+        <tr>
+          <td>Bob</td>
+          <td>bob@example.com</td>
+          <td>
+            <select class="wire-select">
+              <option>Viewer</option>
+              <option>Developer</option>
+              <option selected>Editor</option>
+              <option>Owner</option>
+            </select>
+          </td>
+          <td><span class="wire-btn danger">Remove</span></td>
+        </tr>
+        <tr>
+          <td>Charlie</td>
+          <td>charlie@example.com</td>
+          <td>
+            <select class="wire-select">
+              <option>Viewer</option>
+              <option selected>Developer</option>
+              <option>Editor</option>
+              <option>Owner</option>
+            </select>
+          </td>
+          <td><span class="wire-btn danger">Remove</span></td>
+        </tr>
+        <tr>
+          <td>Diana</td>
+          <td>diana@example.com</td>
+          <td>
+            <select class="wire-select">
+              <option selected>Viewer</option>
+              <option>Developer</option>
+              <option>Editor</option>
+              <option>Owner</option>
+            </select>
+          </td>
+          <td><span class="wire-btn danger">Remove</span></td>
+        </tr>
+      </table>
+      <div class="annotation">
+        US-14: Owner бачить dropdown з 4 ролями та кнопку Remove для кожного учасника.
+        US-15: Якщо Alice -- єдиний owner, її dropdown та Remove disabled/заблоковані.
+        Порядок в dropdown: Viewer, Developer, Editor, Owner (US-16).
+        PATCH members -- owner only. DELETE members -- owner only. 403 для всіх інших.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec10">10. Role Dropdown (розгорнутий вигляд) [US-14, US-16]</h2>
+<!-- ============================================================ -->
+
+<div style="display:flex;gap:24px;flex-wrap:wrap;margin-bottom:24px">
+
+  <div>
+    <div class="role-label">Dropdown (Owner only) -- 4 ролі</div>
+    <div class="dropdown-expanded">
+      <div class="dd-item">Viewer <span class="wire-badge badge-viewer" style="font-size:8px">Глядач</span></div>
+      <div class="dd-item selected">Developer <span class="wire-badge badge-developer" style="font-size:8px">Розробник</span></div>
+      <div class="dd-item">Editor <span class="wire-badge badge-editor" style="font-size:8px">Редактор</span></div>
+      <div class="dd-item">Owner <span class="wire-badge badge-owner" style="font-size:8px">Власник</span></div>
+    </div>
+    <div class="annotation" style="margin:8px 0;max-width:200px">
+      US-16 AC-16.2: Dropdown з 4 варіантами.
+      Порядок: viewer &rarr; developer &rarr; editor &rarr; owner.
+      Відображається тільки для owner.
+    </div>
+  </div>
+
+  <div>
+    <div class="role-label">Last Owner Warning</div>
+    <div style="background:#fef2f2;border:1px solid #dc2626;border-radius:4px;padding:8px 12px;font-size:11px;color:#991b1b;max-width:280px">
+      <strong>400 Bad Request</strong><br>
+      Проект повинен мати хоча б одного owner.<br>
+      <span style="font-size:10px;color:#aaa">Project must have at least one owner.</span>
+    </div>
+    <div class="annotation" style="margin:8px 0;max-width:280px">
+      US-15: Помилка при спробі понизити або видалити єдиного owner.
+      Локалізована (uk/en).
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec11">11. Catalog -- Project Badge [US-16]</h2>
+<!-- ============================================================ -->
+
+<div style="max-width:500px">
+  <div class="wire-catalog-card">
+    <div class="project-name">my-awesome-project</div>
+    <div class="project-meta">Created: 2026-03-15 | 8 members | 15 tasks</div>
+    <div class="project-footer">
+      <span>Public</span>
+      <span class="wire-badge badge-developer">Developer</span>
+    </div>
+  </div>
+  <div class="wire-catalog-card">
+    <div class="project-name">another-project</div>
+    <div class="project-meta">Created: 2026-02-10 | 3 members | 42 tasks</div>
+    <div class="project-footer">
+      <span>Private</span>
+      <span class="wire-badge badge-owner">Owner</span>
+    </div>
+  </div>
+  <div class="wire-catalog-card">
+    <div class="project-name">open-source-lib</div>
+    <div class="project-meta">Created: 2026-01-05 | 12 members | 7 tasks</div>
+    <div class="project-footer">
+      <span>Public</span>
+      <span class="wire-badge badge-viewer">Viewer</span>
+    </div>
+  </div>
+  <div class="annotation" style="max-width:500px">
+    US-16 AC-16.3: Каталог проектів показує роль поточного користувача бейджем.
+    Developer -- синій бейдж. Кольори відповідають загальній палітрі ролей.
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec12">12. 403 Forbidden -- Прямий доступ [US-9, US-17]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <div class="screen">
+    <div class="screen-title">403 -- Viewer/Developer намагається відкрити Backlog</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-developer">Developer</span></span>
+    </div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">403</div>
+        <div class="msg">Недостатньо прав</div>
+        <div style="font-size:11px;margin-top:6px;color:#666">Потрібна роль: Редактор (Editor)</div>
+      </div>
+    </div>
+    <div class="annotation">
+      US-17 AC-17.6: При прямому введенні URL прихованої вкладки -- 403 HTML сторінка.
+      Повідомлення локалізоване (US-18). HTMX отримує HTML, не JSON.
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-title">403 -- Viewer намагається відкрити Terminal</div>
+    <div class="wire-topbar">
+      <span class="logo">AI Workflow</span>
+      <span class="wire-tab active">Board</span>
+      <span class="wire-tab">Archive</span>
+      <span class="wire-tab">Agents</span>
+      <span class="wire-spacer"></span>
+      <span class="wire-profile">User <span class="wire-badge badge-viewer">Viewer</span></span>
+    </div>
+    <div class="wire-content">
+      <div class="wire-403">
+        <div class="code">403</div>
+        <div class="msg">Insufficient permissions</div>
+        <div style="font-size:11px;margin-top:6px;color:#666">Requires role: Developer</div>
+      </div>
+    </div>
+    <div class="annotation">
+      US-5 AC-5.4: Viewer НЕ бачить Terminal. При прямому запиті -- 403.
+      English version для користувача з lang=en.
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec13">13. Локалізація ролей [US-18]</h2>
+<!-- ============================================================ -->
+
+<div class="role-grid">
+
+  <div class="screen">
+    <div class="screen-title">Members -- Мова: Українська (uk)</div>
+    <div class="wire-content">
+      <table class="wire-table">
+        <tr><th>Користувач</th><th>Роль</th></tr>
+        <tr><td>Alice</td><td><span class="wire-badge badge-owner">Власник</span></td></tr>
+        <tr><td>Bob</td><td><span class="wire-badge badge-editor">Редактор</span></td></tr>
+        <tr><td>Charlie</td><td><span class="wire-badge badge-developer">Розробник</span></td></tr>
+        <tr><td>Diana</td><td><span class="wire-badge badge-viewer">Глядач</span></td></tr>
+      </table>
+      <div class="annotation">
+        US-18: Бейджі ролей українською. role.owner="Власник", role.editor="Редактор",
+        role.developer="Розробник", role.viewer="Глядач".
+      </div>
+    </div>
+  </div>
+
+  <div class="screen">
+    <div class="screen-title">Members -- Мова: English (en)</div>
+    <div class="wire-content">
+      <table class="wire-table">
+        <tr><th>User</th><th>Role</th></tr>
+        <tr><td>Alice</td><td><span class="wire-badge badge-owner">Owner</span></td></tr>
+        <tr><td>Bob</td><td><span class="wire-badge badge-editor">Editor</span></td></tr>
+        <tr><td>Charlie</td><td><span class="wire-badge badge-developer">Developer</span></td></tr>
+        <tr><td>Diana</td><td><span class="wire-badge badge-viewer">Viewer</span></td></tr>
+      </table>
+      <div class="annotation">
+        US-18: Role badges in English. Same colors, different labels.
+        Fallback: if key missing, show English name.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="sec14">14. Бейджі ролей -- палітра кольорів [US-16]</h2>
+<!-- ============================================================ -->
+
+<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:24px">
+  <div style="text-align:center">
+    <div class="wire-badge badge-viewer" style="font-size:14px;padding:6px 16px">Viewer / Глядач</div>
+    <div style="font-size:10px;color:#888;margin-top:4px">#6b7280 (сірий)</div>
+  </div>
+  <div style="text-align:center">
+    <div class="wire-badge badge-developer" style="font-size:14px;padding:6px 16px">Developer / Розробник</div>
+    <div style="font-size:10px;color:#888;margin-top:4px">#3b82f6 (синій)</div>
+  </div>
+  <div style="text-align:center">
+    <div class="wire-badge badge-editor" style="font-size:14px;padding:6px 16px">Editor / Редактор</div>
+    <div style="font-size:10px;color:#888;margin-top:4px">#10b981 (зелений)</div>
+  </div>
+  <div style="text-align:center">
+    <div class="wire-badge badge-owner" style="font-size:14px;padding:6px 16px">Owner / Власник</div>
+    <div style="font-size:10px;color:#888;margin-top:4px">#f59e0b (золотий)</div>
+  </div>
+</div>
+
+<div class="annotation" style="max-width:600px">
+  CSS-класи: badge-viewer, badge-developer, badge-editor, badge-owner.
+  Використовуються в Members list, Catalog, Topbar profile area, Dropdown.
+</div>
+
+<hr class="divider">
+
+<!-- ============================================================ -->
+<h2>Зведена таблиця покриття US wireframe-ом</h2>
+<!-- ============================================================ -->
+
+<table class="wire-table" style="max-width:700px">
+  <tr><th>US</th><th>Назва</th><th>Секція wireframe</th></tr>
+  <tr><td>US-1</td><td>Роль developer в ієрархії</td><td>Всі секції (foundation)</td></tr>
+  <tr><td>US-2</td><td>Міграція даних</td><td>Backend-only, без UI</td></tr>
+  <tr><td>US-3</td><td>Viewer read-only</td><td>Sec 2 (Board), Sec 3 (Modal)</td></tr>
+  <tr><td>US-4</td><td>Viewer pipeline status</td><td>Sec 2 (status badge), Sec 4</td></tr>
+  <tr><td>US-5</td><td>Developer terminal</td><td>Sec 5 (Terminal)</td></tr>
+  <tr><td>US-6</td><td>Developer pipeline RO</td><td>Sec 4 (Pipeline)</td></tr>
+  <tr><td>US-7</td><td>Developer queue RO</td><td>Sec 6 (Queue)</td></tr>
+  <tr><td>US-8</td><td>Developer transcriber</td><td>Sec 1 (tab nav)</td></tr>
+  <tr><td>US-9</td><td>Захист backlog</td><td>Sec 7 (Backlog), Sec 12 (403)</td></tr>
+  <tr><td>US-10</td><td>Захист Board actions</td><td>Sec 2 (Board), Sec 3 (Modal)</td></tr>
+  <tr><td>US-11</td><td>Захист Pipeline edit</td><td>Sec 4 (Pipeline)</td></tr>
+  <tr><td>US-12</td><td>Захист Queue management</td><td>Sec 6 (Queue)</td></tr>
+  <tr><td>US-13</td><td>Захист Agents edit</td><td>Sec 8 (Agents)</td></tr>
+  <tr><td>US-14</td><td>Members management</td><td>Sec 9 (Members), Sec 10 (Dropdown)</td></tr>
+  <tr><td>US-15</td><td>Last owner protection</td><td>Sec 9 (Members), Sec 10 (Warning)</td></tr>
+  <tr><td>US-16</td><td>Developer в UI</td><td>Sec 9, 10, 11, 14 (Badges)</td></tr>
+  <tr><td>US-17</td><td>Tab navigation</td><td>Sec 1 (Topbar)</td></tr>
+  <tr><td>US-18</td><td>Локалізація ролей</td><td>Sec 13 (Localisation)</td></tr>
+</table>
+
+<hr class="divider">
+<p class="note">Wireframe v2.0 | 2026-04-05 | BA (AI Workflow) | Покриває 18 User Stories</p>
+
+</body>
+</html>

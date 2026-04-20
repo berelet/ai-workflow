@@ -1,0 +1,47 @@
+/*
+ * base.css — CSS variables, resets, typography, scrollbar, utilities.
+ * Extracted from index.html <style> to be reused across pages.
+ */
+
+:root {
+  --bg-primary: #0a0a0a;
+  --bg-secondary: #141414;
+  --bg-tertiary: #1e1e1e;
+  --bg-hover: #2a2a2a;
+  --text-primary: #ddd;
+  --text-secondary: #aaa;
+  --text-muted: #666;
+  --accent: #c0c0c0;
+  --accent-bright: #e0e0e0;
+  --border: #333;
+  --border-light: #444;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --color-success: #6a9955;
+  --color-danger: #c55;
+  --color-warning: #b89040;
+  --font: 'Roboto Mono', monospace;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-light); }
+
+::selection { background: var(--accent); color: var(--bg-primary); }
+
+/* Utility */
+.hidden { display: none !important; }
+[x-cloak] { display: none !important; }

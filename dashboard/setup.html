@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow — Setup</title>
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text2: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --red: #f85149;
+            --font: 'Roboto Mono', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 14px; min-height: 100vh; display: flex; align-items: center; justify-content: center; }
+        .wizard { background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; padding: 32px; width: 460px; max-width: 95vw; }
+        h1 { font-size: 20px; margin-bottom: 8px; color: var(--accent); }
+        .subtitle { color: var(--text2); font-size: 12px; margin-bottom: 24px; }
+        .steps { display: flex; gap: 8px; margin-bottom: 24px; }
+        .step-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--border); }
+        .step-dot.active { background: var(--accent); }
+        .step-dot.done { background: var(--green); }
+        .step-section { display: none; }
+        .step-section.active { display: block; }
+        label { display: block; color: var(--text2); font-size: 12px; margin-bottom: 4px; margin-top: 12px; }
+        input { width: 100%; padding: 8px 12px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-family: var(--font); font-size: 13px; }
+        input:focus { outline: none; border-color: var(--accent); }
+        button { margin-top: 20px; padding: 10px 20px; background: var(--accent); color: var(--bg); border: none; border-radius: 4px; font-family: var(--font); font-size: 13px; cursor: pointer; width: 100%; }
+        button:hover { opacity: 0.9; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .msg { margin-top: 12px; padding: 8px; border-radius: 4px; font-size: 12px; }
+        .msg.error { background: rgba(248,81,73,0.15); color: var(--red); }
+        .msg.success { background: rgba(63,185,80,0.15); color: var(--green); }
+        .msg.info { background: rgba(88,166,255,0.15); color: var(--accent); }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.6s linear infinite; margin-right: 6px; vertical-align: middle; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .check { color: var(--green); margin-right: 4px; }
+    </style>
+</head>
+<body>
+    <div class="wizard">
+        <h1>AI Workflow Setup</h1>
+        <p class="subtitle">Initial configuration</p>
+
+        <div class="steps">
+            <div class="step-dot active" id="dot-0"></div>
+            <div class="step-dot" id="dot-1"></div>
+            <div class="step-dot" id="dot-2"></div>
+            <div class="step-dot" id="dot-3"></div>
+        </div>
+
+        <!-- Step 0: DB Check -->
+        <div class="step-section active" id="step-0">
+            <p><span class="spinner"></span> Checking database connection...</p>
+            <div id="db-msg"></div>
+        </div>
+
+        <!-- Step 1: Create Superadmin -->
+        <div class="step-section" id="step-1">
+            <p>Create the first administrator account.</p>
+            <label for="sa-email">Email</label>
+            <input type="email" id="sa-email" placeholder="admin@example.com">
+            <label for="sa-name">Display name</label>
+            <input type="text" id="sa-name" placeholder="Admin">
+            <label for="sa-pass">Password (min 8 characters)</label>
+            <input type="password" id="sa-pass" placeholder="********">
+            <label for="sa-pass2">Confirm password</label>
+            <input type="password" id="sa-pass2" placeholder="********">
+            <button onclick="createSuperadmin()" id="btn-sa">Create Superadmin</button>
+            <div id="sa-msg"></div>
+        </div>
+
+        <!-- Step 2: Configure Workspace -->
+        <div class="step-section" id="step-2">
+            <p>Where should new projects be cloned to?</p>
+            <label for="ws-path">Workspace directory</label>
+            <input type="text" id="ws-path" placeholder="(autodetected)">
+            <p class="subtitle" style="margin-top:8px">Will be created if it doesn't exist. Must be writable by the dashboard process.</p>
+            <button onclick="configureWorkspace()" id="btn-ws">Save Workspace Path</button>
+            <div id="ws-msg"></div>
+        </div>
+
+        <!-- Step 3: Seed Defaults -->
+        <div class="step-section" id="step-3">
+            <p>Seed default agent configurations and skills.</p>
+            <button onclick="seedDefaults()" id="btn-seed">Initialize Defaults</button>
+            <div id="seed-msg"></div>
+        </div>
+
+        <!-- Step 4: Complete -->
+        <div class="step-section" id="step-4">
+            <p><span class="check">&#10003;</span> Setup complete! Redirecting to login...</p>
+        </div>
+    </div>
+
+    <script>
+        const API = '';
+        let currentStep = 0;
+
+        function showStep(n) {
+            document.querySelectorAll('.step-section').forEach((el, i) => {
+                el.classList.toggle('active', i === n);
+            });
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById('dot-' + i);
+                dot.classList.remove('active', 'done');
+                if (i < n) dot.classList.add('done');
+                else if (i === n) dot.classList.add('active');
+            }
+            currentStep = n;
+        }
+
+        function esc(s) {
+            const d = document.createElement('div');
+            d.textContent = s;
+            return d.innerHTML;
+        }
+
+        function msg(id, text, type, raw) {
+            const el = document.getElementById(id);
+            el.innerHTML = `<div class="msg ${type}">${raw ? text : esc(text)}</div>`;
+        }
+
+        async function checkStatus() {
+            try {
+                const r = await fetch(API + '/api/setup/status');
+                const data = await r.json();
+
+                if (!data.required) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+
+                switch (data.step) {
+                    case 'db_error':
+                        msg('db-msg', 'Database connection failed', 'error');
+                        break;
+                    case 'run_migrations':
+                        msg('db-msg', 'Database tables not found. Run migrations first: <code>alembic -c dashboard/migrations/alembic.ini upgrade head</code>', 'error', true);
+                        break;
+                    case 'create_superadmin':
+                        msg('db-msg', '<span class="check">&#10003;</span> Database connected', 'success', true);
+                        setTimeout(() => showStep(1), 800);
+                        break;
+                    case 'configure_workspace':
+                        if (data.default_path) {
+                            document.getElementById('ws-path').value = data.default_path;
+                        }
+                        showStep(2);
+                        break;
+                    case 'seed_defaults':
+                        showStep(3);
+                        break;
+                    default:
+                        msg('db-msg', 'Unknown state: ' + data.step, 'error');
+                }
+            } catch (e) {
+                msg('db-msg', 'Cannot reach server: ' + e.message, 'error');
+            }
+        }
+
+        async function createSuperadmin() {
+            const email = document.getElementById('sa-email').value.trim();
+            const name = document.getElementById('sa-name').value.trim();
+            const pass = document.getElementById('sa-pass').value;
+            const pass2 = document.getElementById('sa-pass2').value;
+
+            if (!email || !name || !pass) {
+                msg('sa-msg', 'All fields are required', 'error');
+                return;
+            }
+            if (pass !== pass2) {
+                msg('sa-msg', 'Passwords do not match', 'error');
+                return;
+            }
+            if (pass.length < 8) {
+                msg('sa-msg', 'Password must be at least 8 characters', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-sa');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Creating...';
+
+            try {
+                const r = await fetch(API + '/api/setup/create-superadmin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass, display_name: name }),
+                });
+                const data = await r.json();
+
+                if (!r.ok) {
+                    msg('sa-msg', data.detail || 'Error', 'error');  // detail is from our backend, safe
+                    btn.disabled = false;
+                    btn.textContent = 'Create Superadmin';
+                    return;
+                }
+
+                msg('sa-msg', '<span class="check">&#10003;</span> ' + esc(data.message), 'success', true);
+                // Default ws-path will be filled by the next status check (configure_workspace step)
+                setTimeout(() => { checkStatus(); }, 800);
+            } catch (e) {
+                msg('sa-msg', 'Network error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Create Superadmin';
+            }
+        }
+
+        async function configureWorkspace() {
+            const path = document.getElementById('ws-path').value.trim();
+            if (!path) {
+                msg('ws-msg', 'Path is required', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('btn-ws');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+            try {
+                const r = await fetch(API + '/api/setup/configure-workspace', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ path }),
+                });
+                const data = await r.json();
+
+                if (!r.ok) {
+                    msg('ws-msg', data.detail || 'Error', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Save Workspace Path';
+                    return;
+                }
+
+                msg('ws-msg', '<span class="check">&#10003;</span> Saved: ' + esc(data.path), 'success', true);
+                setTimeout(() => showStep(3), 800);
+            } catch (e) {
+                msg('ws-msg', 'Network error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Save Workspace Path';
+            }
+        }
+
+        async function seedDefaults() {
+            const btn = document.getElementById('btn-seed');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Seeding...';
+
+            try {
+                const r = await fetch(API + '/api/setup/seed-defaults', { method: 'POST' });
+                const data = await r.json();
+
+                if (!r.ok) {
+                    msg('seed-msg', data.detail || 'Error', 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Initialize Defaults';
+                    return;
+                }
+
+                msg('seed-msg',
+                    `<span class="check">&#10003;</span> Done: ${parseInt(data.agents_seeded)} agents, ${parseInt(data.skills_seeded)} skills`,
+                    'success', true
+                );
+                setTimeout(() => {
+                    showStep(4);
+                    setTimeout(() => { window.location.href = '/login.html'; }, 2000);
+                }, 1000);
+            } catch (e) {
+                msg('seed-msg', 'Network error: ' + e.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Initialize Defaults';
+            }
+        }
+
+        // Start
+        checkStatus();
+    </script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+{# Agent editor partial — loaded via HTMX when clicking an agent button #}
+<div id="agent-source-bar" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+  <span id="agent-source" style="font-size:10px;color:var(--text-muted)">
+    {% if agent_source == 'project' %}
+      {{ t('agents.source_project', lang) }}
+    {% elif agent_source == 'global' %}
+      {{ t('agents.source_global', lang) }}
+    {% else %}
+      default
+    {% endif %}
+  </span>
+  <div style="display:flex;gap:6px">
+    {% if (user_role in ('editor', 'owner') or is_superadmin) and agent_source == 'project' %}
+    <button onclick="resetAgentInstructions('{{ agent_name }}', '{{ project }}')"
+            style="padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-family:var(--font);font-size:10px;border-radius:var(--radius-sm)">
+      {{ t('agents.reset', lang) }}
+    </button>
+    {% endif %}
+  </div>
+</div>
+<textarea id="agent-editor-textarea"
+          {% if not (user_role in ('editor', 'owner') or is_superadmin) %}readonly{% endif %}
+          style="flex:1;padding:16px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:12px;line-height:1.6;resize:none;transition:border-color 0.15s;width:100%;min-height:400px"
+>{{ agent_content }}</textarea>
+{% if user_role in ('editor', 'owner') or is_superadmin %}
+<div class="save-bar">
+  <button onclick="saveAgentInstructions('{{ agent_name }}', '{{ project }}')">{{ t('agents.save', lang) }}</button>
+</div>
+{% endif %}

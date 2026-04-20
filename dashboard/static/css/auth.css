@@ -1,0 +1,194 @@
+/*
+ * auth.css — Login / Register page styles.
+ * Depends on base.css and components.css.
+ */
+
+/* ── Page layout: centered card ─────────────────────────────────── */
+.auth-page {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.auth-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 32px;
+  width: 400px;
+  max-width: 95vw;
+}
+
+.auth-card h1 {
+  font-size: 20px;
+  color: var(--accent-bright);
+  margin-bottom: 4px;
+  letter-spacing: 1px;
+  font-weight: 600;
+}
+
+.auth-card .subtitle {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 24px;
+}
+
+/* ── Tab switching ──────────────────────────────────────────────── */
+.auth-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+
+.auth-tab {
+  flex: 1;
+  padding: 10px 0;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  text-align: center;
+  transition: all 0.15s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.auth-tab:hover {
+  color: var(--text-secondary);
+}
+
+.auth-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+/* ── Form sections ──────────────────────────────────────────────── */
+.auth-form {
+  display: none;
+}
+
+.auth-form.active {
+  display: block;
+}
+
+.auth-form .field {
+  margin-bottom: 16px;
+}
+
+.auth-form .field label {
+  margin-bottom: 6px;
+}
+
+.auth-form .field input {
+  width: 100%;
+}
+
+.auth-form button[type="submit"] {
+  margin-top: 8px;
+  padding: 10px 20px;
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.auth-form button[type="submit"]:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.auth-form button[type="submit"]:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* ── Switch link ────────────────────────────────────────────────── */
+.auth-switch {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.auth-switch a {
+  color: var(--accent);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.auth-switch a:hover {
+  text-decoration: underline;
+}
+
+/* ── Error / Success messages ───────────────────────────────────── */
+.auth-msg {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  display: none;
+}
+
+.auth-msg.visible {
+  display: block;
+}
+
+.auth-msg.error {
+  background: rgba(204,85,85,0.15);
+  color: var(--color-danger);
+}
+
+.auth-msg.success {
+  background: rgba(106,153,85,0.15);
+  color: var(--color-success);
+}
+
+/* ── Language toggle (top-right corner) ─────────────────────────── */
+.lang-toggle {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  gap: 4px;
+  z-index: 10;
+}
+
+.lang-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.lang-btn:hover {
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+
+.lang-btn.active {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* ── Spinner inside button ──────────────────────────────────────── */
+.auth-form button .spinner {
+  margin-right: 6px;
+}

@@ -1,0 +1,211 @@
+/*
+ * components.css — Reusable UI components: modals, buttons, forms, badges, spinner.
+ * Depends on base.css variables.
+ */
+
+/* ── Modal ──────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed; top: 0; left: 0;
+  width: 100%; height: 100%;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(2px);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+}
+.modal {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  width: 400px;
+  max-width: 95vw;
+}
+.modal h3 {
+  font-size: 13px; margin-bottom: 12px;
+  color: var(--text-primary); font-family: var(--font); font-weight: 500;
+}
+.modal p {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 12px;
+}
+.modal .modal-btns {
+  display: flex; gap: 8px; justify-content: flex-end;
+}
+.modal .modal-btns button {
+  padding: 6px 16px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: transparent;
+  cursor: pointer; font-size: 12px; font-family: var(--font);
+  font-weight: 500; color: var(--text-secondary); transition: all 0.15s;
+}
+.modal .modal-btns button:hover {
+  border-color: var(--accent); color: var(--text-primary);
+}
+
+/* ── Buttons ────────────────────────────────────────────────────── */
+.btn {
+  padding: 8px 20px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover {
+  border-color: var(--accent); color: var(--text-primary);
+}
+.btn:disabled {
+  opacity: 0.4; cursor: not-allowed;
+}
+
+.btn-primary {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.btn-primary:hover {
+  background: var(--accent);
+  color: var(--bg-primary);
+}
+
+.btn-danger {
+  border-color: var(--color-danger);
+  color: var(--color-danger);
+}
+.btn-danger:hover {
+  background: var(--color-danger);
+  color: var(--bg-primary);
+}
+
+.btn-ghost {
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover {
+  color: var(--text-primary);
+}
+
+.btn-block { width: 100%; }
+
+/* ── Form Inputs ────────────────────────────────────────────────── */
+label {
+  display: block;
+  color: var(--text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-bottom: 6px;
+  font-family: var(--font);
+}
+input, textarea, select {
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-family: var(--font);
+  font-size: 13px;
+  transition: border-color 0.15s;
+}
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+input:disabled, textarea:disabled, select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+textarea {
+  resize: vertical;
+  min-height: 80px;
+  line-height: 1.5;
+}
+
+/* ── Cards ──────────────────────────────────────────────────────── */
+.card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+}
+.card h2 {
+  font-size: 15px;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+.card .subtitle {
+  color: var(--text-muted);
+  font-size: 11px;
+  margin-bottom: 20px;
+}
+
+/* ── Badges (priority) ──────────────────────────────────────────── */
+.badge-priority {
+  font-size: 10px; padding: 1px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.badge-high { border-color: var(--color-danger); color: var(--color-danger); }
+.badge-medium { border-color: var(--color-warning); color: var(--color-warning); }
+.badge-low { border-color: var(--color-success); color: var(--color-success); }
+
+/* ── Badges (role) ─────────────────────────────────────────────── */
+.badge-role {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #fff;
+}
+.badge-viewer { background: #6b7280; }
+.badge-developer { background: #569cd6; }
+.badge-editor { background: var(--color-success, #10b981); }
+.badge-owner { background: var(--color-warning, #f59e0b); }
+
+/* ── Tabs ───────────────────────────────────────────────────────── */
+.tabs { display: flex; gap: 0; }
+.tab {
+  padding: 8px 14px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 12px;
+  transition: all 0.15s;
+}
+.tab:hover { color: var(--text-primary); }
+.tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+  font-weight: 500;
+}
+
+/* ── Spinner ────────────────────────────────────────────────────── */
+.spinner {
+  display: inline-block;
+  width: 14px; height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  vertical-align: middle;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Messages ───────────────────────────────────────────────────── */
+.msg {
+  margin-top: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+}
+.msg.error { background: rgba(204,85,85,0.15); color: var(--color-danger); }
+.msg.success { background: rgba(106,153,85,0.15); color: var(--color-success); }
+.msg.info { background: rgba(192,192,192,0.15); color: var(--accent); }

@@ -1,0 +1,216 @@
+<div class="topbar" x-data="{ profileOpen: false, mobileMenu: false }">
+  <button class="mobile-burger" @click="mobileMenu = !mobileMenu" :class="{ active: mobileMenu }">&#9776;</button>
+  <h1>AI Workflow</h1>
+  <a href="/catalog" class="topbar-catalog-link">{{ t('topbar.catalog', lang) }}</a>
+
+  <!-- Project management group -->
+  <div class="project-controls">
+    <select id="project-select"
+            onchange="if(window.AppState) { window.AppState.currentProject = this.value; window.switchProject(); }">
+    </select>
+    <input type="hidden" name="project" id="current-project-input" value="">
+
+    <button class="btn-project-action btn-new-project"
+            onclick="showTab('newproject')"
+            title="{{ t('topbar.newproject', lang) }}">+</button>
+
+    {% if user_role|default('') == 'owner' or is_superadmin %}
+    <button class="btn-project-action btn-del-project"
+            onclick="openDeleteProjectModal()"
+            title="{{ t('common.delete', lang) }}">&times;</button>
+    {% endif %}
+
+    <!-- Branch badge: shows live working tree branch, click to switch -->
+    <div class="branch-badge-wrapper" x-data="branchBadge()" x-init="init()" x-show="displayBranch" x-cloak>
+      <button type="button"
+              class="branch-badge"
+              :class="{ 'branch-badge-dirty': isDirty }"
+              @click="open = !open; if (open) refresh()"
+              :title="'{{ t('newproject.base_branch_tip', lang) }}'">
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="6" y1="3" x2="6" y2="15"/>
+          <circle cx="18" cy="6" r="3"/>
+          <circle cx="6" cy="18" r="3"/>
+          <path d="M18 9a9 9 0 0 1-9 9"/>
+        </svg>
+        <span x-text="displayBranch"></span>
+        <span x-show="isDirty" x-cloak class="branch-badge-dot" title="Uncommitted changes"></span>
+      </button>
+      <div x-show="open" x-cloak @click.outside="open = false; error = ''; needsForce = false" class="branch-popover">
+        <div class="branch-popover-title">{{ t('newproject.switch_branch', lang) }}</div>
+        <input type="text" class="branch-popover-input"
+               x-model="newBranch"
+               @keydown.enter="save(needsForce)"
+               @keydown.escape="open = false"
+               placeholder="main">
+        <div class="branch-popover-meta" x-show="!needsForce">
+          <span x-show="currentBranch">{{ t('newproject.current_branch', lang) }}: <strong x-text="currentBranch"></strong></span>
+          <span x-show="!hasRepo" style="color:var(--text-muted)">{{ t('newproject.no_repo_on_disk', lang) }}</span>
+        </div>
+
+        <!-- Dirty/unpushed warning when 409 came back -->
+        <div x-show="needsForce" x-cloak class="branch-popover-warning">
+          <div style="font-size:11px;color:var(--color-danger);font-weight:500;margin-bottom:4px">⚠ {{ t('newproject.dirty_warning', lang) }}</div>
+          <template x-if="dirty.length > 0">
+            <div style="margin-bottom:6px">
+              <div style="font-size:10px;color:var(--text-muted)">{{ t('modal.delete.dirty_files', lang) }}:</div>
+              <pre style="font-size:10px;max-height:80px;overflow-y:auto;background:var(--bg-primary);padding:4px;margin:2px 0;border-radius:var(--radius-sm)"><template x-for="line in dirty" :key="line"><span x-text="line + '\n'"></span></template></pre>
+            </div>
+          </template>
+          <template x-if="unpushed.length > 0">
+            <div>
+              <div style="font-size:10px;color:var(--text-muted)">{{ t('modal.delete.unpushed_commits', lang) }}:</div>
+              <pre style="font-size:10px;max-height:80px;overflow-y:auto;background:var(--bg-primary);padding:4px;margin:2px 0;border-radius:var(--radius-sm)"><template x-for="line in unpushed" :key="line"><span x-text="line + '\n'"></span></template></pre>
+            </div>
+          </template>
+        </div>
+
+        <div class="branch-popover-actions">
+          <template x-if="!needsForce">
+            <button type="button" @click="save(false)" :disabled="saving || !newBranch.trim() || newBranch.trim() === currentBranch">
+              <span x-show="!saving">{{ t('common.save', lang) }}</span>
+              <span x-show="saving" x-cloak>...</span>
+            </button>
+          </template>
+          <template x-if="needsForce">
+            <button type="button" @click="save(true)" :disabled="saving" style="border-color:var(--color-danger);color:var(--color-danger)">
+              <span x-show="!saving">{{ t('newproject.force_switch', lang) }}</span>
+              <span x-show="saving" x-cloak>...</span>
+            </button>
+          </template>
+          <button type="button" class="cancel" @click="open = false; needsForce = false; error = ''">{{ t('common.cancel', lang) }}</button>
+        </div>
+        <div x-show="error && !needsForce" x-cloak class="branch-popover-error" x-text="error"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="running-indicators"></div>
+
+  <!-- Tab navigation (role-filtered) -->
+  <div class="tabs" id="tab-nav" :class="{ 'mobile-open': mobileMenu }">
+    {% set all_tabs = [
+      ('backlog', 'topbar.backlog', 'developer'),
+      ('board', 'topbar.board', 'viewer'),
+      ('archive', 'topbar.archive', 'viewer'),
+      ('pipeline', 'topbar.pipeline', 'developer'),
+      ('agents', 'topbar.agents', 'viewer'),
+      ('members', 'members.title', 'editor'),
+      ('terminal', 'topbar.terminal', 'developer'),
+      ('transcriber', 'topbar.transcriber', 'developer'),
+      ('logs', 'topbar.logs', 'viewer'),
+    ] %}
+    {% set role_rank = {'viewer': 0, 'developer': 1, 'editor': 2, 'owner': 3} %}
+    {% set effective_role = 'owner' if is_superadmin else user_role|default('viewer') %}
+    {% set my_rank = role_rank.get(effective_role, 0) %}
+    {% for tab_id, tab_key, min_role in all_tabs %}
+    <button class="tab"
+            data-tab="{{ tab_id }}"
+            {% if my_rank < role_rank.get(min_role, 0) %}style="display:none"{% endif %}
+            @click="showTab('{{ tab_id }}'); mobileMenu = false">
+      {{ t(tab_key, lang) }}
+    </button>
+    {% endfor %}
+  </div>
+
+  <!-- Right side: notification bell, lang toggle, profile, admin -->
+  <div class="topbar-right">
+    <!-- Queue Status -->
+    {% if user %}
+    <div class="queue-indicator" x-data="queueIndicator()" x-init="startPolling()" id="queue-indicator-root">
+      <button @click="toggle()" class="bell-btn queue-bell" x-show="hasQueue" x-cloak :title="statusText">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3h5v5"/><path d="M8 3H3v5"/><path d="M12 22v-8.3a4 4 0 0 0-1.172-2.872L3 3"/><path d="m15 9 6-6"/></svg>
+        <span x-show="running" class="queue-badge-dot" x-cloak></span>
+      </button>
+      <div x-show="open" @click.outside="open = false" class="notification-dropdown queue-dropdown" x-cloak>
+        <div class="notification-dropdown-header">
+          <span x-text="statusText"></span>
+          <button x-show="running" @click="cancelQueue()" style="color:var(--color-danger)">{{ t('queue.cancel', lang) }}</button>
+        </div>
+        <div class="notification-list" style="max-height:50vh">
+          <template x-for="item in items" :key="item.id">
+            <div class="notification-item" :class="{ unread: item.status === 'running' }"
+                 style="cursor:pointer" @click="showLog(item)">
+              <div style="width:16px;text-align:center;flex-shrink:0;font-size:13px"
+                   :style="{ color: statusColor(item.status) }"
+                   x-text="statusIcon(item.status)"></div>
+              <div style="flex:1;min-width:0">
+                <div class="notification-title" x-text="item.task_id_display + ' ' + item.title"></div>
+                <div x-show="item.error_message" style="font-size:10px;color:var(--color-danger);margin-top:2px" x-text="item.error_message"></div>
+              </div>
+              <div style="font-size:10px;flex-shrink:0" :style="{ color: statusColor(item.status) }" x-text="statusLabel(item.status)"></div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- Notification Bell -->
+    {% if user %}
+    <div class="notification-bell" x-data="notificationBell()" x-init="startPolling()">
+      <button @click="toggle()" class="bell-btn">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+        <span x-show="count > 0" x-text="count" class="notification-badge" x-cloak></span>
+      </button>
+      <div x-show="open" @click.outside="open = false" class="notification-dropdown" x-cloak>
+        <div class="notification-dropdown-header">
+          <span>{{ t('notifications.title', lang) }}</span>
+          <button @click="markAllRead()" x-show="count > 0">{{ t('notifications.mark_all_read', lang) }}</button>
+        </div>
+        <div class="notification-list" id="notification-list">
+          <template x-if="items.length === 0">
+            <div class="catalog-empty" style="padding: 20px;">
+              <p>{{ t('notifications.empty', lang) }}</p>
+            </div>
+          </template>
+          <template x-for="n in items" :key="n.id">
+            <div class="notification-item" :class="{ unread: !n.is_read }" @click="clickNotification(n)">
+              <div class="unread-dot" x-show="!n.is_read"></div>
+              <div style="flex:1; min-width:0;">
+                <div class="notification-title" x-text="n.title"></div>
+                <div class="notification-body" x-text="n.body" x-show="n.body"></div>
+                <div class="notification-time" x-text="timeAgo(n.created_at)"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+        <div class="notification-dropdown-footer" x-show="items.length > 0">
+          <a @click="showAll()">{{ t('notifications.show_all', lang) }}</a>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="lang-toggle">
+      <button {% if lang == 'uk' %}class="active"{% endif %}
+              onclick="switchLang('uk')">UK</button>
+      <button {% if lang == 'en' %}class="active"{% endif %}
+              onclick="switchLang('en')">EN</button>
+    </div>
+    <div class="profile-dropdown" @click.outside="profileOpen = false">
+      <button class="profile-btn" @click="profileOpen = !profileOpen" id="profile-btn-label">
+        {{ user.display_name or user.email }}
+      </button>
+      <div class="dropdown-menu" :class="{ 'open': profileOpen }">
+        <a hx-get="/ui/partials/tabs/profile"
+           hx-target="#tab-content"
+           hx-swap="innerHTML"
+           @click="profileOpen = false; document.querySelectorAll('#tab-nav .tab').forEach(t=>t.classList.remove('active'));">
+          {{ t('topbar.profile', lang) }}
+        </a>
+        <a hx-get="/ui/partials/tabs/my-requests"
+           hx-target="#tab-content"
+           hx-swap="innerHTML"
+           @click="profileOpen = false; document.querySelectorAll('#tab-nav .tab').forEach(t=>t.classList.remove('active'));">
+          {{ t('my_requests.title', lang) }}
+        </a>
+        {% if is_superadmin %}
+        <a href="/admin.html">{{ t('topbar.admin_panel', lang) }}</a>
+        {% endif %}
+        <a onclick="handleLogout()">{{ t('topbar.logout', lang) }}</a>
+      </div>
+    </div>
+    <a href="/admin.html" class="gear-icon {% if not is_superadmin %}hidden{% endif %}" id="admin-gear-icon" title="{{ t('topbar.admin', lang) }}">&#9881;</a>
+  </div>
+</div>

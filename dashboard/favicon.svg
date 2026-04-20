@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="50%" stop-color="#8b5cf6"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="bolt" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fde68a"/>
+      <stop offset="100%" stop-color="#fbbf24"/>
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="1.5" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+  <!-- Rounded square background -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#bg)"/>
+  <!-- Subtle inner shine -->
+  <rect x="2" y="2" width="60" height="30" rx="14" fill="white" opacity="0.08"/>
+  <!-- Three workflow nodes -->
+  <circle cx="18" cy="18" r="5" fill="white" opacity="0.9"/>
+  <circle cx="46" cy="18" r="5" fill="white" opacity="0.9"/>
+  <circle cx="32" cy="46" r="6" fill="white" opacity="0.95" filter="url(#glow)"/>
+  <!-- Connecting lines -->
+  <line x1="22" y1="21" x2="28" y2="41" stroke="white" stroke-width="2.2" opacity="0.6" stroke-linecap="round"/>
+  <line x1="42" y1="21" x2="36" y2="41" stroke="white" stroke-width="2.2" opacity="0.6" stroke-linecap="round"/>
+  <line x1="23" y1="18" x2="41" y2="18" stroke="white" stroke-width="2.2" opacity="0.6" stroke-linecap="round"/>
+  <!-- Lightning bolt in center node (AI) -->
+  <path d="M34 40 L30 46 L33 46 L31 52 L37 44 L34 44 L36 40Z" fill="url(#bolt)" filter="url(#glow)"/>
+</svg>

@@ -1,0 +1,35 @@
+{% if members|length == 0 %}
+<div class="catalog-empty" style="padding: 30px 20px;">
+  <p>{{ t('members.empty', lang) }}</p>
+</div>
+{% else %}
+  {% set role_rank = {'viewer': 0, 'developer': 1, 'editor': 2, 'owner': 3} %}
+  {% for m in members %}
+  <div class="member-row" id="member-{{ m.id }}">
+    <div class="member-avatar">{{ m.user.display_name[:1]|upper if m.user.display_name else m.user.email[:1]|upper }}</div>
+    <div class="member-info">
+      <div class="member-name">{{ m.user.display_name or m.user.email }}</div>
+      <div class="member-email">{{ m.user.email }}</div>
+      <div class="member-date">{{ t('members.joined', lang) }}: {{ m.created_at.strftime('%d.%m.%Y') }}</div>
+    </div>
+    <div class="member-actions">
+      {% if user_role == 'owner' and m.role != 'owner' %}
+      <select class="role-select"
+              data-member-id="{{ m.id }}"
+              data-member-name="{{ (m.user.display_name or m.user.email)|e }}"
+              data-current-role="{{ m.role }}"
+              @change="handleRoleChange($event, '{{ m.id }}', {{ (m.user.display_name or m.user.email)|tojson|safe }}, '{{ m.role }}')">
+        <option value="viewer" {% if m.role == 'viewer' %}selected{% endif %}>{{ t('role.viewer', lang) }}</option>
+        <option value="developer" {% if m.role == 'developer' %}selected{% endif %}>{{ t('role.developer', lang) }}</option>
+        <option value="editor" {% if m.role == 'editor' %}selected{% endif %}>{{ t('role.editor', lang) }}</option>
+      </select>
+      <button class="btn-delete-member"
+              @click="openDeleteModal('{{ m.id }}', {{ (m.user.display_name or m.user.email)|tojson|safe }})"
+              title="{{ t('members.remove', lang) }}">&#10005;</button>
+      {% else %}
+      <span class="role-badge role-{{ m.role }}">{{ t('role.' + m.role, lang) }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+{% endif %}

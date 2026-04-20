@@ -1,0 +1,34 @@
+[
+  {
+    "id": 2,
+    "task": "Фикс comfy-analytics — python not found",
+    "title": "Фикс comfy-analytics — python not found",
+    "description": "run.sh не может запустить comfy-analytics: nohup: failed to run command python.",
+    "priority": "medium",
+    "status": "todo"
+  },
+  {
+    "id": 3,
+    "task": "Git-инициализация ai-workflow",
+    "title": "Git-инициализация ai-workflow",
+    "description": "Инициализировать git-репо, .gitignore (venv, __pycache__, *.pyc, uploads), первый коммит.",
+    "priority": "medium",
+    "status": "todo"
+  },
+  {
+    "id": 5,
+    "task": "Дашборд — редактирование project.md",
+    "title": "Дашборд — редактирование project.md",
+    "description": "Добавить возможность редактировать project.md проекта прямо из дашборда (как сейчас с agent instructions).",
+    "priority": "low",
+    "status": "todo"
+  },
+  {
+    "id": 21,
+    "task": "анализ",
+    "title": "анализ",
+    "description": "проанализировать модуль аналитики. просто анализ. ничего не меняем.",
+    "priority": "medium",
+    "status": "in-progress"
+  }
+]

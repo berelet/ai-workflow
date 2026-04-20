@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+
+{% block modals %}
+{% include "partials/_modals_legacy.html" %}
+{% endblock %}
+
+{% block content %}
+<div style="color:var(--text-muted);font-size:12px;padding:20px">{{ t('common.loading', lang) }}</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// === Init: single bootstrap request instead of 6 sequential ===
+(async function() {
+  try {
+    var t0 = performance.now();
+
+    // 1. Single bootstrap call (replaces /auth/me + /projects)
+    var data = await API.get('/api/bootstrap');
+    AppState.user = data.user;
+    Auth._user = data.user;
+    AppState.allProjects = data.projects;
+    AppState.roles = data.roles || {};
+    AppState.baseBranches = data.base_branches || {};
+    AppState.bindings = data.bindings || {};
+
+    // 2. i18n (loaded from server-injected window.__i18n, just apply)
+    i18n._strings = window.__i18n;
+    i18n._lang = window.__lang;
+    i18n._loaded = true;
+    i18n.apply();
+
+    // 3. Populate project selector — unbound projects get a "(setup needed)" suffix
+    var sel = document.getElementById('project-select');
+    if (sel && data.projects.length) {
+      sel.innerHTML = data.projects.map(function(p) {
+        var bound = AppState.bindings[p];
+        var label = escapeHtml(p) + (bound ? '' : ' ⚠');
+        return '<option value="' + escapeHtml(p) + '">' + label + '</option>';
+      }).join('');
+      AppState.currentProject = data.projects[0];
+    }
+
+    // 4. Sync polling
+    Sync.start();
+
+    // 5. Apply role-based tab filtering for current project
+    if (AppState.currentProject) {
+      _filterTabsByRole(AppState.currentProject);
+      window.dispatchEvent(new CustomEvent('project-changed', { detail: { slug: AppState.currentProject } }));
+    }
+
+    // 6. Load tab from hash (default: board) — guard handles unbound projects
+    var initTab = (location.hash.replace('#', '') || 'board');
+    if (AppState.currentProject) {
+      showTab(initTab);
+    }
+
+    console.log('[init] OK in', Math.round(performance.now() - t0) + 'ms:', data.user.email, data.projects.length, 'projects');
+  } catch(e) {
+    console.error('[init] FAILED:', e);
+    if (e.status === 401) window.location.href = '/login.html';
+  }
+})();
+
+// === Role-based tab visibility ===
+var _ROLE_RANK = { viewer: 0, developer: 1, editor: 2, owner: 3 };
+var _TAB_MIN_ROLES = {
+  backlog: 'developer', board: 'viewer', archive: 'viewer',
+  pipeline: 'developer', agents: 'viewer', members: 'editor',
+  terminal: 'developer', transcriber: 'developer', logs: 'viewer'
+};
+function _filterTabsByRole(project) {
+  var role = (AppState.roles || {})[project] || 'viewer';
+  if (AppState.user && AppState.user.is_superadmin) role = 'owner';
+  var myRank = _ROLE_RANK[role] || 0;
+  document.querySelectorAll('#tab-nav .tab').forEach(function(btn) {
+    var tabId = btn.dataset.tab;
+    var minRole = _TAB_MIN_ROLES[tabId] || 'viewer';
+    var reqRank = _ROLE_RANK[minRole] || 0;
+    btn.style.display = myRank >= reqRank ? '' : 'none';
+  });
+  // Show/hide delete project button
+  var delBtn = document.querySelector('.btn-del-project');
+  if (delBtn) delBtn.style.display = (role === 'owner' || (AppState.user && AppState.user.is_superadmin)) ? '' : 'none';
+}
+
+// === Binding helpers ===
+// A project is "bound" on this dashboard instance if instance_project_bindings has
+// a row for (DASHBOARD_UUID, project_id). Bootstrap returns the binding map; an
+// unbound project still appears in the dropdown but file-touching tabs need setup.
+function isProjectBound(slug) {
+  if (!AppState.bindings) return true;  // dev fallback when bootstrap hasn't run
+  return !!AppState.bindings[slug];
+}
+
+// Tabs that DON'T need on-disk presence — these read from DB only.
+var _DB_ONLY_TABS = { board: 1, archive: 1, agents: 1, logs: 1, members: 1 };
+
+// === Tab switching via HTMX ===
+function showTab(name) {
+  var project = AppState.currentProject || '';
+  // Guard: if project has no local copy on this dashboard and the requested tab
+  // needs the filesystem, redirect to the setup screen instead.
+  if (project && !isProjectBound(project) && !_DB_ONLY_TABS[name]) {
+    return showSetupBinding(project);
+  }
+  var btn = document.querySelector('#tab-nav .tab[data-tab="' + name + '"]');
+  if (btn) {
+    document.querySelectorAll('#tab-nav .tab').forEach(function(t) { t.classList.remove('active'); });
+    btn.classList.add('active');
+  }
+  history.replaceState(null, '', '#' + name);
+  htmx.ajax('GET', '/ui/partials/tabs/' + name + '?project=' + encodeURIComponent(project), '#tab-content');
+}
+
+// === Setup screen for unbound projects ===
+// Shown instead of code-touching tabs when the current project has no
+// instance_project_bindings row for this DASHBOARD_UUID. The user picks a local
+// folder or clones from git; on success the binding is created and the page reloads.
+function showSetupBinding(project) {
+  document.querySelectorAll('#tab-nav .tab').forEach(function(t) { t.classList.remove('active'); });
+  htmx.ajax('GET', '/ui/partials/setup-binding?project=' + encodeURIComponent(project), '#tab-content');
+}
+window.showSetupBinding = showSetupBinding;
+
+// === Project switching ===
+function switchProject() {
+  var sel = document.getElementById('project-select');
+  if (sel) AppState.currentProject = sel.value;
+  _filterTabsByRole(AppState.currentProject);
+  // Notify subscribers (e.g. branch badge in topbar) that the project changed
+  window.dispatchEvent(new CustomEvent('project-changed', { detail: { slug: AppState.currentProject } }));
+  var activeBtn = document.querySelector('#tab-nav .tab.active');
+  var tabName = activeBtn ? activeBtn.dataset.tab : 'board';
+  // If current tab is hidden after role change, fallback to board
+  var tabBtn = document.querySelector('#tab-nav .tab[data-tab="' + tabName + '"]');
+  if (tabBtn && tabBtn.style.display === 'none') tabName = 'board';
+  showTab(tabName);
+}
+// Inline onchange handlers run in global scope and need explicit window references.
+window.switchProject = switchProject;
+
+// === Reload project data + refresh tab (called by modals after CRUD) ===
+async function loadProject() {
+  var project = AppState.currentProject || '';
+  if (!project) return;
+  try {
+    var data = await API.get('/api/projects/' + encodeURIComponent(project));
+    AppState.backlogItems = data.backlog || [];
+  } catch(e) { console.error('loadProject:', e); }
+  // Don't reload terminal/transcriber tabs — they have live state
+  var activeBtn = document.querySelector('#tab-nav .tab.active');
+  var tabName = activeBtn ? activeBtn.dataset.tab : (location.hash.replace('#','') || 'board');
+  if (tabName === 'terminal' || tabName === 'transcriber') return;
+  showTab(tabName);
+}
+
+// === Refresh bindings after a bind succeeds ===
+// Called by the setup screen after bind-local / bind-clone-stream completes.
+// Re-pulls bootstrap to update AppState.bindings, then redraws the dropdown
+// (so the ⚠ marker disappears) and routes the user to the board tab.
+async function refreshBindingsAndOpen(slug) {
+  try {
+    var data = await API.get('/api/bootstrap');
+    AppState.bindings = data.bindings || {};
+    var sel = document.getElementById('project-select');
+    if (sel) {
+      sel.innerHTML = (data.projects || []).map(function(p) {
+        var bound = AppState.bindings[p];
+        var label = escapeHtml(p) + (bound ? '' : ' ⚠');
+        return '<option value="' + escapeHtml(p) + '">' + label + '</option>';
+      }).join('');
+      sel.value = slug;
+    }
+    AppState.currentProject = slug;
+  } catch(e) { console.error('refreshBindings:', e); }
+  showTab('board');
+}
+window.refreshBindingsAndOpen = refreshBindingsAndOpen;
+
+// === Language switching (cookie + reload) ===
+function switchLang(lang) {
+  document.cookie = 'ai_workflow_lang=' + lang + '; path=/; max-age=31536000';
+  window.location.reload();
+}
+
+// === Logout ===
+async function handleLogout() {
+  await Auth.logout();
+}
+</script>
+{% endblock %}

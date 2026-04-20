@@ -1,0 +1,55 @@
+{% if my_requests|length == 0 %}
+<div class="catalog-empty" style="padding: 30px 20px;">
+  <p>{{ t('my_requests.empty', lang) }}</p>
+  <a href="/catalog" class="login-link" style="margin-top: 8px; display: inline-block;">{{ t('my_requests.empty_cta', lang) }}</a>
+</div>
+{% else %}
+  {% for jr in my_requests %}
+  <div class="my-request-card" id="my-jr-{{ jr.id }}">
+    <div class="my-request-info">
+      <div class="my-request-project">
+        {% if jr.status == 'approved' %}
+        <a href="/?project={{ jr.project.slug }}#board" style="color: var(--text-primary); text-decoration: none;">{{ jr.project.name }}</a>
+        {% else %}
+        <a href="/catalog" style="color: var(--text-primary); text-decoration: none;">{{ jr.project.name }}</a>
+        {% endif %}
+      </div>
+      <div class="my-request-date">
+        {{ t('my_requests.submitted', lang) }}: {{ jr.created_at.strftime('%d.%m.%Y %H:%M') }}
+      </div>
+      {% if jr.reviewed_at %}
+      <div class="my-request-date">
+        {{ t('my_requests.reviewed', lang) }}: {{ jr.reviewed_at.strftime('%d.%m.%Y %H:%M') }}
+      </div>
+      {% endif %}
+      {% if jr.message %}
+      <div class="join-request-message">"{{ jr.message }}"</div>
+      {% endif %}
+    </div>
+    <div class="my-request-actions">
+      {% if jr.status == 'pending' %}
+      <span class="badge-pending">{{ t('join_requests.pending', lang) }}</span>
+      <button class="btn-reject" style="font-size: 10px; padding: 4px 10px;"
+              @click="cancelId = '{{ jr.id }}'; cancelProject = {{ jr.project.name|tojson }}">
+        {{ t('my_requests.cancel', lang) }}
+      </button>
+      {% elif jr.status == 'approved' %}
+      <span class="badge-approved">{{ t('join_requests.approved', lang) }}</span>
+      {% elif jr.status == 'rejected' %}
+      <span class="badge-rejected">{{ t('join_requests.rejected', lang) }}</span>
+      {% elif jr.status == 'cancelled' %}
+      <span class="badge-cancelled">{{ t('join_requests.cancelled', lang) }}</span>
+      {% endif %}
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if has_more %}
+  <button class="btn-join" style="margin: 16px auto; display: block;"
+          hx-get="/ui/partials/tabs/my-requests?status={{ status_filter }}&offset={{ offset + limit }}&partial=list"
+          hx-target="this"
+          hx-swap="outerHTML">
+    {{ t('join_requests.load_more', lang) }}
+  </button>
+  {% endif %}
+{% endif %}

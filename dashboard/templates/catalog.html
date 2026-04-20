@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/catalog.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>{{ t('catalog.title', lang) }} — AI Workflow</title>
+</head>
+<body>
+
+<!-- Lightweight catalog header -->
+<header class="catalog-header">
+  <a href="/" class="catalog-logo">AI WORKFLOW</a>
+  <a href="/catalog" class="catalog-nav-link active">{{ t('topbar.catalog', lang) }}</a>
+  {% if user %}
+    <a href="/" class="catalog-nav-link">{{ t('catalog.current_project', lang) }}</a>
+  {% endif %}
+  <div class="catalog-header-right">
+    <div class="lang-toggle">
+      <button onclick="location.href='/catalog?lang=uk{% if q %}&q={{ q }}{% endif %}'" {% if lang == 'uk' %}class="active"{% endif %}>UK</button>
+      <button onclick="location.href='/catalog?lang=en{% if q %}&q={{ q }}{% endif %}'" {% if lang == 'en' %}class="active"{% endif %}>EN</button>
+    </div>
+    {% if user %}
+      <span class="catalog-user-name">{{ user.display_name or user.email }}</span>
+    {% else %}
+      <a href="/login.html" class="btn-join">{{ t('auth.sign_in', lang) }}</a>
+    {% endif %}
+  </div>
+</header>
+
+<main class="catalog-page">
+  <!-- Flash messages (for no-JS fallback) -->
+  {% if flash_message %}
+  <div class="alert-success" role="alert" style="color: var(--color-success); border: 1px solid var(--color-success); border-radius: var(--radius-sm); padding: 8px; margin-bottom: 16px; font-size: 11px;">
+    {{ flash_message }}
+  </div>
+  {% endif %}
+  {% if flash_error %}
+  <div class="alert-error" role="alert">
+    {{ flash_error }}
+  </div>
+  {% endif %}
+
+  <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">{{ t('catalog.title', lang) }}</h2>
+
+  <!-- Search -->
+  <div class="catalog-search">
+    <svg class="catalog-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    <form method="GET" action="/catalog" id="search-form">
+      <input type="search"
+             name="q"
+             value="{{ q }}"
+             placeholder="{{ t('catalog.search_placeholder', lang) }}"
+             maxlength="200"
+             class="catalog-search-input"
+             aria-label="{{ t('catalog.search_placeholder', lang) }}"
+             hx-get="/catalog"
+             hx-trigger="keyup changed delay:300ms"
+             hx-target="#catalog-results"
+             hx-swap="innerHTML"
+             hx-push-url="true"
+             hx-include="[name='limit']">
+      <input type="hidden" name="limit" value="{{ limit }}">
+      <noscript><button type="submit" class="btn-join" style="margin-top:8px;">{{ t('catalog.search_button', lang) }}</button></noscript>
+    </form>
+  </div>
+
+  <!-- Results container -->
+  <div id="catalog-results">
+    {% include "partials/_catalog_results.html" %}
+  </div>
+</main>
+
+<script src="/static/lib/htmx.min.js"></script>
+</body>
+</html>

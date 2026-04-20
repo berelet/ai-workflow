@@ -1,0 +1,393 @@
+<div id="tab-newproject" x-data="newProjectForm()" x-init="loadKeys()">
+  <div style="max-width:560px;margin:40px auto 0">
+    <div style="text-align:center;margin-bottom:32px">
+      <h2 style="font-size:16px;color:var(--text-primary);font-weight:500;margin-bottom:8px">{{ t('newproject.title', lang) }}</h2>
+      <p style="font-size:12px;color:var(--text-muted)">{{ t('newproject.description', lang) }}</p>
+    </div>
+
+    <!-- Mode toggle: existing folder vs new from git -->
+    <label class="modal-label">{{ t('newproject.source', lang) }}</label>
+    <div class="np-visibility" role="radiogroup" aria-label="Source">
+      <div class="np-vis-opt" :class="{ selected: mode === 'existing' }" @click="mode = 'existing'" role="radio" :aria-checked="mode === 'existing'" tabindex="0" @keydown.space.prevent="mode = 'existing'" @keydown.enter.prevent="mode = 'existing'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.existing_folder', lang) }}</span>
+        <span class="np-vis-hint">{{ t('newproject.existing_hint', lang) }}</span>
+      </div>
+      <div class="np-vis-opt" :class="{ selected: mode === 'git' }" @click="mode = 'git'" role="radio" :aria-checked="mode === 'git'" tabindex="0" @keydown.space.prevent="mode = 'git'" @keydown.enter.prevent="mode = 'git'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.from_git', lang) }}</span>
+        <span class="np-vis-hint">{{ t('newproject.from_git_hint', lang) }}</span>
+      </div>
+    </div>
+
+    <label class="modal-label">{{ t('newproject.name', lang) }}</label>
+    <input id="np-name" class="np-input" placeholder="my-awesome-app" x-model="name">
+
+    <label class="modal-label">{{ t('newproject.visibility', lang) }}</label>
+    <div class="np-visibility" role="radiogroup" aria-label="{{ t('newproject.visibility', lang) }}">
+      <div class="np-vis-opt" :class="{ selected: visibility === 'public' }" @click="visibility = 'public'" role="radio" :aria-checked="visibility === 'public'" tabindex="0" @keydown.space.prevent="visibility = 'public'" @keydown.enter.prevent="visibility = 'public'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.public', lang) }}</span>
+        <span class="np-vis-hint">{{ t('newproject.hint_public', lang) }}</span>
+      </div>
+      <div class="np-vis-opt" :class="{ selected: visibility === 'private' }" @click="visibility = 'private'" role="radio" :aria-checked="visibility === 'private'" tabindex="0" @keydown.space.prevent="visibility = 'private'" @keydown.enter.prevent="visibility = 'private'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.private', lang) }}</span>
+        <span class="np-vis-hint">{{ t('newproject.hint_private', lang) }}</span>
+      </div>
+    </div>
+
+    <!-- Existing folder branch -->
+    <template x-if="mode === 'existing'">
+      <div>
+        <label class="modal-label">{{ t('newproject.local_path', lang) }}</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input id="np-repo" class="np-input" placeholder="/home/user/my-project" style="flex:1" x-model="repo">
+          <button @click="openFolderPicker()" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer;white-space:nowrap">{{ t('newproject.browse', lang) }}</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Git clone branch -->
+    <template x-if="mode === 'git'">
+      <div>
+        <label class="modal-label">{{ t('newproject.repo_url', lang) }}</label>
+        <input class="np-input" placeholder="git@gitlab.com:team/my-app.git" x-model="repoUrl" @input="resetTest()">
+
+        <label class="modal-label">{{ t('newproject.ssh_key', lang) }}</label>
+        <template x-if="sshKeys.length > 0">
+          <div style="display:flex;gap:6px;align-items:center">
+            <select class="np-input" x-model="selectedKeyId" @change="resetTest()" style="flex:1">
+              <template x-for="k in sshKeys" :key="k.id">
+                <option :value="k.id" x-text="k.label + ' (' + k.fingerprint.slice(0, 24) + '...)'"></option>
+              </template>
+            </select>
+            <button @click="showGenerate = true; generateLabel = ''" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer;white-space:nowrap">+ New</button>
+          </div>
+        </template>
+        <template x-if="sshKeys.length === 0">
+          <div style="font-size:12px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius-sm)">
+            {{ t('newproject.no_keys', lang) }}
+            <button @click="showGenerate = true; generateLabel = 'Default'" type="button" style="margin-top:8px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer;display:block">{{ t('newproject.generate_key', lang) }}</button>
+          </div>
+        </template>
+
+        <!-- Generate key inline panel -->
+        <template x-if="showGenerate">
+          <div style="margin-top:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary)">
+            <template x-if="!generatedKey">
+              <div>
+                <label class="modal-label" style="margin-top:0">{{ t('newproject.key_label', lang) }}</label>
+                <input class="np-input" placeholder="my-laptop" x-model="generateLabel">
+                <button @click="generateKey()" :disabled="generating || !generateLabel.trim()" type="button" style="margin-top:8px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer" x-text="generating ? '...' : '{{ t('newproject.generate_key', lang) }}'"></button>
+                <button @click="showGenerate = false" type="button" style="margin-top:8px;margin-left:6px;padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:var(--font);font-size:12px;cursor:pointer">{{ t('common.cancel', lang) }}</button>
+              </div>
+            </template>
+            <template x-if="generatedKey">
+              <div>
+                <p style="font-size:12px;color:var(--text-muted);margin-bottom:8px">{{ t('newproject.add_to_provider', lang) }}</p>
+                <pre style="background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);font-size:11px;color:var(--text-primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all" x-text="generatedKey"></pre>
+                <div style="display:flex;gap:8px;margin-top:8px;flex-wrap:wrap">
+                  <button @click="copyKey()" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer" x-text="copyText"></button>
+                  <a href="https://gitlab.com/-/profile/keys" target="_blank" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:12px;text-decoration:none">GitLab</a>
+                  <a href="https://github.com/settings/ssh/new" target="_blank" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:12px;text-decoration:none">GitHub</a>
+                  <button @click="closeGenerate()" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer">{{ t('newproject.added_to_provider', lang) }}</button>
+                </div>
+              </div>
+            </template>
+          </div>
+        </template>
+
+        <div style="margin-top:12px">
+          <button @click="testConnection()" :disabled="testing || !repoUrl.trim() || !selectedKeyId" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer" x-text="testing ? '...' : '{{ t('newproject.test_connection', lang) }}'"></button>
+          <span x-show="testResult" :style="{ color: testResult && testResult.ok ? '#4ade80' : '#f87171', marginLeft: '12px', fontSize: '12px' }" x-text="testStatusText"></span>
+        </div>
+      </div>
+    </template>
+
+    <label class="modal-label">{{ t('newproject.description', lang) }} <span style="color:var(--text-muted);font-size:10px">(optional)</span></label>
+    <textarea id="np-desc" class="np-input" rows="6" style="line-height:1.6;resize:vertical" placeholder="{{ t('newproject.description', lang) }}" x-model="desc"></textarea>
+
+    <button id="np-launch-btn" @click="launch()" :disabled="!canLaunch || submitting"
+            :style="{
+              width: '100%',
+              padding: '10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid ' + (canLaunch && !submitting ? 'var(--accent)' : 'var(--border)'),
+              background: 'transparent',
+              color: canLaunch && !submitting ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontFamily: 'var(--font)',
+              fontSize: '13px',
+              cursor: canLaunch && !submitting ? 'pointer' : 'not-allowed',
+              marginTop: '20px',
+              opacity: canLaunch && !submitting ? '1' : '0.6',
+              transition: 'all 0.15s'
+            }"
+            x-text="launchButtonText"></button>
+    <div x-show="!canLaunch && !submitting" x-cloak style="margin-top:8px;font-size:11px;color:var(--text-muted);text-align:center" x-text="disabledReason"></div>
+
+    <!-- SSE clone progress -->
+    <div x-show="cloneProgress.length > 0" style="margin-top:16px">
+      <pre style="background:var(--bg-primary);border:1px solid var(--border);padding:12px;border-radius:var(--radius-sm);font-size:11px;color:var(--text-secondary);max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word" x-ref="cloneLog"><template x-for="(line, i) in cloneProgress" :key="i"><span x-text="line + '\n'"></span></template></pre>
+    </div>
+
+    <div id="np-status" style="margin-top:16px;font-size:12px;text-align:center" :style="{ color: error ? '#f87171' : 'var(--text-muted)' }" x-text="statusText"></div>
+  </div>
+</div>
+
+<script>
+function newProjectForm() {
+  return {
+    mode: 'existing',
+    name: '', repo: '', desc: '',
+    repoUrl: '',
+    visibility: 'public',
+    sshKeys: [],
+    selectedKeyId: '',
+    showGenerate: false,
+    generateLabel: '',
+    generating: false,
+    generatedKey: '',
+    copyText: '{{ t("newproject.copy", lang) }}',
+    testing: false,
+    testResult: null,
+    submitting: false,
+    error: false,
+    statusText: '',
+    cloneProgress: [],
+
+    get canLaunch() {
+      if (!this.name.trim()) return false;
+      if (this.mode === 'existing') {
+        // existing folder is optional path-wise — let backend validate
+        return true;
+      }
+      // git mode requires successful test
+      return !!(this.repoUrl.trim() && this.selectedKeyId && this.testResult && this.testResult.ok);
+    },
+
+    get disabledReason() {
+      if (!this.name.trim()) return '⚠ Project name is required';
+      if (this.mode === 'git') {
+        if (!this.repoUrl.trim()) return '⚠ Git URL is required';
+        if (!this.selectedKeyId) return '⚠ Select or generate an SSH key';
+        if (!this.testResult) return '⚠ Click "Test connection" before creating';
+        if (!this.testResult.ok) return '⚠ Connection test failed — fix the error and retry';
+      }
+      return '';
+    },
+
+    get launchButtonText() {
+      if (this.submitting) return '{{ t("common.loading", lang) }}';
+      if (this.mode === 'git') return '{{ t("newproject.clone_and_create", lang) }}';
+      return '{{ t("newproject.launch_discovery", lang) }}';
+    },
+
+    get testStatusText() {
+      if (!this.testResult) return '';
+      if (this.testResult.ok) return '✓ ' + (this.testResult.default_branch || 'connected');
+      return '✗ ' + (this.testResult.message || this.testResult.error || 'failed');
+    },
+
+    async loadKeys() {
+      try {
+        const r = await API.get('/api/auth/me/ssh-keys');
+        this.sshKeys = r.keys || [];
+        if (this.sshKeys.length > 0 && !this.selectedKeyId) {
+          this.selectedKeyId = this.sshKeys[0].id;
+        }
+      } catch (e) {
+        this.sshKeys = [];
+      }
+    },
+
+    resetTest() {
+      this.testResult = null;
+    },
+
+    async generateKey() {
+      if (!this.generateLabel.trim()) return;
+      this.generating = true;
+      try {
+        const r = await API.post('/api/auth/me/ssh-keys/generate', { label: this.generateLabel.trim() });
+        if (r.error) {
+          this.error = true;
+          this.statusText = r.error;
+          this.generating = false;
+          return;
+        }
+        this.generatedKey = r.key.public_key;
+        // Refresh key list and select the new one
+        await this.loadKeys();
+        this.selectedKeyId = r.key.id;
+      } catch (e) {
+        this.error = true;
+        this.statusText = e.message || 'Generate failed';
+      } finally {
+        this.generating = false;
+      }
+    },
+
+    async copyKey() {
+      try {
+        await navigator.clipboard.writeText(this.generatedKey);
+        this.copyText = '{{ t("newproject.copied", lang) }}';
+        setTimeout(() => { this.copyText = '{{ t("newproject.copy", lang) }}'; }, 1500);
+      } catch (e) {}
+    },
+
+    closeGenerate() {
+      this.showGenerate = false;
+      this.generatedKey = '';
+      this.generateLabel = '';
+    },
+
+    async testConnection() {
+      if (!this.repoUrl.trim() || !this.selectedKeyId) return;
+      this.testing = true;
+      this.testResult = null;
+      try {
+        const r = await API.post('/api/git/test-connection', {
+          url: this.repoUrl.trim(),
+          ssh_key_id: this.selectedKeyId,
+        });
+        this.testResult = r;
+      } catch (e) {
+        this.testResult = { ok: false, error: 'network', message: e.message || 'network error' };
+      } finally {
+        this.testing = false;
+      }
+    },
+
+    async launch() {
+      if (!this.canLaunch || this.submitting) return;
+      this.submitting = true;
+      this.error = false;
+      this.statusText = '';
+      this.cloneProgress = [];
+
+      if (this.mode === 'existing') {
+        // Legacy create_project flow
+        const body = { name: this.name.trim(), description: this.desc.trim(), visibility: this.visibility };
+        if (this.repo.trim()) body.repo_path = this.repo.trim();
+        try {
+          const res = await API.post('/api/projects', body);
+          if (res.error) {
+            this.error = true;
+            this.statusText = res.error;
+            this.submitting = false;
+            return;
+          }
+          await this.afterCreate(res.slug);
+        } catch (e) {
+          this.error = true;
+          this.statusText = e.message || 'Error';
+          this.submitting = false;
+        }
+        return;
+      }
+
+      // git clone flow — SSE
+      this.statusText = '{{ t("newproject.cloning", lang) }}';
+      try {
+        const res = await fetch('/api/projects/clone-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            name: this.name.trim(),
+            description: this.desc.trim(),
+            visibility: this.visibility,
+            repo_url: this.repoUrl.trim(),
+            ssh_key_id: this.selectedKeyId,
+          }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          let detail = txt;
+          try { detail = JSON.parse(txt).detail || txt; } catch (e) {}
+          this.error = true;
+          this.statusText = detail;
+          this.submitting = false;
+          return;
+        }
+        // Read SSE stream
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let createdSlug = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const chunk = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            const dataLine = chunk.split('\n').find(l => l.startsWith('data: '));
+            if (!dataLine) continue;
+            let evt;
+            try { evt = JSON.parse(dataLine.slice(6)); } catch (e) { continue; }
+            if (evt.type === 'progress' && evt.line) {
+              this.cloneProgress.push(evt.line);
+              this.$nextTick(() => {
+                if (this.$refs.cloneLog) this.$refs.cloneLog.scrollTop = this.$refs.cloneLog.scrollHeight;
+              });
+            } else if (evt.type === 'phase') {
+              this.statusText = '{{ t("newproject.phase", lang) }}: ' + evt.phase;
+            } else if (evt.type === 'done' && evt.slug) {
+              createdSlug = evt.slug;
+              this.statusText = '{{ t("newproject.cloned", lang) }} (' + (evt.default_branch || 'main') + ')';
+            } else if (evt.type === 'error') {
+              this.error = true;
+              this.statusText = '✗ ' + (evt.message || evt.code || 'error');
+              this.submitting = false;
+              return;
+            }
+          }
+        }
+        if (createdSlug) {
+          await this.afterCreate(createdSlug);
+        } else {
+          this.error = true;
+          this.statusText = 'Stream ended without success event';
+          this.submitting = false;
+        }
+      } catch (e) {
+        this.error = true;
+        this.statusText = e.message || 'Network error';
+        this.submitting = false;
+      }
+    },
+
+    async afterCreate(slug) {
+      AppState.allProjects = await API.get('/api/projects');
+      const sel = document.getElementById('project-select');
+      if (sel) {
+        sel.innerHTML = AppState.allProjects.map(p =>
+          '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>'
+        ).join('');
+        sel.value = slug;
+      }
+      AppState.currentProject = slug;
+
+      const savedName = this.name.trim();
+      const savedRepo = this.mode === 'existing' ? this.repo.trim() : '';
+      const savedDesc = this.desc.trim();
+      showTab('terminal');
+      this.$nextTick(() => {
+        const termPrompt = document.getElementById('term-prompt');
+        if (termPrompt) {
+          if (savedRepo || this.mode === 'git') {
+            termPrompt.value = 'read orchestrator/instructions.md. Run discovery for EXISTING project "' + savedName + '".\n\nUser context:\n\n' + savedDesc;
+          } else {
+            termPrompt.value = 'read orchestrator/instructions.md. Run discovery pipeline for new project "' + savedName + '". User context:\n\n' + savedDesc + '\n\nStart by asking the user questions.';
+          }
+          if (typeof startRun === 'function') startRun();
+        }
+      });
+      this.submitting = false;
+    },
+  };
+}
+</script>

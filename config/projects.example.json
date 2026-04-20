@@ -1,0 +1,18 @@
+{
+  "ai-workflow-dashboard": {
+    "port": 9000,
+    "dir": "/path/to/ai-workflow",
+    "venv": "venv",
+    "cmd": "uvicorn dashboard.server:app --host 0.0.0.0 --port 9000",
+    "log": "dashboard/server.log",
+    "health": "http://localhost:9000/"
+  },
+  "my-project": {
+    "port": 8000,
+    "dir": "/path/to/my-project",
+    "venv": "venv",
+    "cmd": "uvicorn app.main:app --host 0.0.0.0 --port 8000",
+    "log": "server.log",
+    "health": "http://localhost:8000/health"
+  }
+}

@@ -1,0 +1,18 @@
+[Unit]
+Description=AI Workflow Dashboard (uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=berelet
+Group=berelet
+WorkingDirectory=/var/www/ai-workflow
+EnvironmentFile=/var/www/ai-workflow/.env
+ExecStart=/var/www/ai-workflow/.venv/bin/uvicorn dashboard.server:app --host 127.0.0.1 --port 9000
+Restart=on-failure
+RestartSec=3
+StandardOutput=append:/var/www/ai-workflow/tmp/uvicorn.log
+StandardError=append:/var/www/ai-workflow/tmp/uvicorn.log
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,67 @@
+<div id="tab-my-requests" x-data="{ statusFilter: '{{ status_filter }}', cancelId: null, cancelProject: '' }">
+  <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">
+    {{ t('my_requests.title', lang) }}
+  </h2>
+
+  <!-- Filter tabs -->
+  <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    {% set filters = [
+      ('all', 'my_requests.filter_all'),
+      ('pending', 'my_requests.filter_pending'),
+      ('approved', 'my_requests.filter_approved'),
+      ('rejected', 'my_requests.filter_rejected'),
+      ('cancelled', 'my_requests.filter_cancelled'),
+    ] %}
+    {% for fval, fkey in filters %}
+    <button class="page-btn"
+            :class="{ active: statusFilter === '{{ fval }}' }"
+            @click="statusFilter = '{{ fval }}'"
+            hx-get="/ui/partials/tabs/my-requests?status={{ fval }}&partial=list"
+            hx-target="#my-requests-list"
+            hx-swap="innerHTML">
+      {{ t(fkey, lang) }}
+      {% if request_counts.get(fval, 0) > 0 %}
+      <span class="tab-badge" style="font-size: 9px; min-width: 14px; height: 14px; border-radius: 7px; padding: 0 4px; margin-left: 4px;">{{ request_counts[fval] }}</span>
+      {% endif %}
+    </button>
+    {% endfor %}
+  </div>
+
+  <div id="my-requests-list" class="my-requests-list">
+    {% include "partials/tabs/_my_requests_list.html" %}
+  </div>
+
+  <!-- Cancel confirmation modal -->
+  <template x-if="cancelId">
+    <div class="modal-overlay" @click.self="cancelId = null" style="z-index: 200;">
+      <div class="modal">
+        <h3>{{ t('my_requests.cancel_confirm_title', lang) }}</h3>
+        <p>{{ t('my_requests.cancel_confirm_body', lang, project='') | replace('""', '"') }}<span x-text="cancelProject"></span>"?</p>
+        <div class="modal-btns">
+          <button class="btn-danger" :disabled="cancelling"
+                  x-data="{ cancelling: false }"
+                  @click="
+                    if (cancelling) return;
+                    cancelling = true;
+                    fetch('/api/my/join-requests/' + cancelId + '/cancel', {
+                      method: 'PATCH',
+                      headers: {'HX-Request': 'true'}
+                    }).then(r => {
+                      if (!r.ok) throw new Error(r.status);
+                      return r.text();
+                    }).then(html => {
+                      var el = document.getElementById('my-jr-' + cancelId);
+                      if (el) el.outerHTML = html;
+                      cancelId = null;
+                    }).catch(() => { cancelId = null; cancelling = false; });
+                  ">
+            {{ t('my_requests.cancel_confirm_yes', lang) }}
+          </button>
+          <button class="btn-secondary" @click="cancelId = null">
+            {{ t('my_requests.cancel_confirm_no', lang) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>

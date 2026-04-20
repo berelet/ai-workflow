@@ -1,0 +1,258 @@
+<div id="setup-binding" x-data="setupBindingForm('{{ project }}')" x-init="loadKeys()">
+  <div style="max-width:560px;margin:40px auto 0">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="display:inline-block;padding:4px 12px;border-radius:var(--radius-sm);background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#f59e0b;font-size:11px;margin-bottom:12px">⚠ {{ t('setup_binding.no_local_copy', lang) }}</div>
+      <h2 style="font-size:16px;color:var(--text-primary);font-weight:500;margin-bottom:8px">{{ t('setup_binding.title', lang) }}: <span style="color:var(--accent)">{{ project }}</span></h2>
+      <p style="font-size:12px;color:var(--text-muted)">{{ t('setup_binding.description', lang) }}</p>
+    </div>
+
+    <!-- Mode toggle: existing folder vs git clone -->
+    <label class="modal-label">{{ t('newproject.source', lang) }}</label>
+    <div class="np-visibility" role="radiogroup" aria-label="Source">
+      <div class="np-vis-opt" :class="{ selected: mode === 'existing' }" @click="mode = 'existing'" role="radio" :aria-checked="mode === 'existing'" tabindex="0" @keydown.space.prevent="mode = 'existing'" @keydown.enter.prevent="mode = 'existing'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.existing_folder', lang) }}</span>
+        <span class="np-vis-hint">{{ t('setup_binding.existing_hint', lang) }}</span>
+      </div>
+      <div class="np-vis-opt" :class="{ selected: mode === 'git' }" @click="mode = 'git'" role="radio" :aria-checked="mode === 'git'" tabindex="0" @keydown.space.prevent="mode = 'git'" @keydown.enter.prevent="mode = 'git'">
+        <div class="np-vis-dot"></div>
+        <span class="np-vis-label">{{ t('newproject.from_git', lang) }}</span>
+        <span class="np-vis-hint">{{ t('setup_binding.git_hint', lang) }}</span>
+      </div>
+    </div>
+
+    <!-- Existing folder branch -->
+    <template x-if="mode === 'existing'">
+      <div>
+        <label class="modal-label">{{ t('newproject.local_path', lang) }}</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <!-- id=np-repo shared with newproject form: the folder-picker modal reads/writes this id.
+               Both partials swap into #tab-content, so they never coexist in the DOM. -->
+          <input id="np-repo" class="np-input" placeholder="/var/www/my-project" style="flex:1" x-model="repo">
+          <button @click="openFolderPicker()" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer;white-space:nowrap">{{ t('newproject.browse', lang) }}</button>
+        </div>
+      </div>
+    </template>
+
+    <!-- Git clone branch -->
+    <template x-if="mode === 'git'">
+      <div>
+        <label class="modal-label">{{ t('newproject.repo_url', lang) }}</label>
+        <input class="np-input" placeholder="git@gitlab.com:team/my-app.git" x-model="repoUrl" @input="resetTest()">
+
+        <label class="modal-label">{{ t('newproject.ssh_key', lang) }}</label>
+        <template x-if="sshKeys.length > 0">
+          <div style="display:flex;gap:6px;align-items:center">
+            <select class="np-input" x-model="selectedKeyId" @change="resetTest()" style="flex:1">
+              <template x-for="k in sshKeys" :key="k.id">
+                <option :value="k.id" x-text="k.label + ' (' + k.fingerprint.slice(0, 24) + '...)'"></option>
+              </template>
+            </select>
+          </div>
+        </template>
+        <template x-if="sshKeys.length === 0">
+          <div style="font-size:12px;color:var(--text-muted);padding:8px;border:1px dashed var(--border);border-radius:var(--radius-sm)">
+            {{ t('newproject.no_keys', lang) }}
+          </div>
+        </template>
+
+        <div style="margin-top:12px">
+          <button @click="testConnection()" :disabled="testing || !repoUrl.trim() || !selectedKeyId" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-secondary);font-family:var(--font);font-size:12px;cursor:pointer" x-text="testing ? '...' : '{{ t('newproject.test_connection', lang) }}'"></button>
+          <span x-show="testResult" :style="{ color: testResult && testResult.ok ? '#4ade80' : '#f87171', marginLeft: '12px', fontSize: '12px' }" x-text="testStatusText"></span>
+        </div>
+      </div>
+    </template>
+
+    <button @click="submit()" :disabled="!canSubmit || submitting"
+            :style="{
+              width: '100%',
+              padding: '10px',
+              borderRadius: 'var(--radius-sm)',
+              border: '1px solid ' + (canSubmit && !submitting ? 'var(--accent)' : 'var(--border)'),
+              background: 'transparent',
+              color: canSubmit && !submitting ? 'var(--text-primary)' : 'var(--text-muted)',
+              fontFamily: 'var(--font)',
+              fontSize: '13px',
+              cursor: canSubmit && !submitting ? 'pointer' : 'not-allowed',
+              marginTop: '20px',
+              opacity: canSubmit && !submitting ? '1' : '0.6',
+              transition: 'all 0.15s'
+            }"
+            x-text="submitButtonText"></button>
+
+    <!-- SSE clone progress -->
+    <div x-show="cloneProgress.length > 0" style="margin-top:16px">
+      <pre style="background:var(--bg-primary);border:1px solid var(--border);padding:12px;border-radius:var(--radius-sm);font-size:11px;color:var(--text-secondary);max-height:240px;overflow-y:auto;white-space:pre-wrap;word-break:break-word" x-ref="cloneLog"><template x-for="(line, i) in cloneProgress" :key="i"><span x-text="line + '\n'"></span></template></pre>
+    </div>
+
+    <div style="margin-top:16px;font-size:12px;text-align:center" :style="{ color: error ? '#f87171' : 'var(--text-muted)' }" x-text="statusText"></div>
+  </div>
+</div>
+
+<script>
+function setupBindingForm(slug) {
+  return {
+    slug: slug,
+    mode: 'existing',
+    repo: '',
+    repoUrl: '',
+    sshKeys: [],
+    selectedKeyId: '',
+    testing: false,
+    testResult: null,
+    submitting: false,
+    error: false,
+    statusText: '',
+    cloneProgress: [],
+
+    get canSubmit() {
+      if (this.mode === 'existing') return !!this.repo.trim();
+      return !!(this.repoUrl.trim() && this.selectedKeyId && this.testResult && this.testResult.ok);
+    },
+
+    get submitButtonText() {
+      if (this.submitting) return '{{ t("common.loading", lang) }}';
+      if (this.mode === 'existing') return '{{ t("setup_binding.bind_local", lang) }}';
+      return '{{ t("setup_binding.clone_and_bind", lang) }}';
+    },
+
+    get testStatusText() {
+      if (!this.testResult) return '';
+      if (this.testResult.ok) return '✓ ' + (this.testResult.default_branch || 'connected');
+      return '✗ ' + (this.testResult.message || this.testResult.error || 'failed');
+    },
+
+    async loadKeys() {
+      try {
+        const r = await API.get('/api/auth/me/ssh-keys');
+        this.sshKeys = r.keys || [];
+        if (this.sshKeys.length > 0 && !this.selectedKeyId) {
+          this.selectedKeyId = this.sshKeys[0].id;
+        }
+      } catch (e) {
+        this.sshKeys = [];
+      }
+    },
+
+    resetTest() {
+      this.testResult = null;
+    },
+
+    async testConnection() {
+      if (!this.repoUrl.trim() || !this.selectedKeyId) return;
+      this.testing = true;
+      this.testResult = null;
+      try {
+        const r = await API.post('/api/git/test-connection', {
+          url: this.repoUrl.trim(),
+          ssh_key_id: this.selectedKeyId,
+        });
+        this.testResult = r;
+      } catch (e) {
+        this.testResult = { ok: false, error: 'network', message: e.message || 'network error' };
+      } finally {
+        this.testing = false;
+      }
+    },
+
+    async submit() {
+      if (!this.canSubmit || this.submitting) return;
+      this.submitting = true;
+      this.error = false;
+      this.statusText = '';
+      this.cloneProgress = [];
+
+      if (this.mode === 'existing') {
+        try {
+          const res = await API.post('/api/projects/' + encodeURIComponent(this.slug) + '/bind-local', {
+            repo_path: this.repo.trim(),
+          });
+          if (res.error) {
+            this.error = true;
+            this.statusText = res.error;
+            this.submitting = false;
+            return;
+          }
+          this.statusText = '{{ t("setup_binding.bound", lang) }}: ' + res.local_path;
+          if (typeof refreshBindingsAndOpen === 'function') {
+            await refreshBindingsAndOpen(this.slug);
+          }
+        } catch (e) {
+          this.error = true;
+          this.statusText = e.message || 'Error';
+          this.submitting = false;
+        }
+        return;
+      }
+
+      // git clone flow — SSE
+      this.statusText = '{{ t("newproject.cloning", lang) }}';
+      try {
+        const res = await fetch('/api/projects/' + encodeURIComponent(this.slug) + '/bind-clone-stream', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            repo_url: this.repoUrl.trim(),
+            ssh_key_id: this.selectedKeyId,
+          }),
+        });
+        if (!res.ok) {
+          const txt = await res.text();
+          let detail = txt;
+          try { detail = JSON.parse(txt).detail || txt; } catch (e) {}
+          this.error = true;
+          this.statusText = detail;
+          this.submitting = false;
+          return;
+        }
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        let createdSlug = null;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          let idx;
+          while ((idx = buffer.indexOf('\n\n')) !== -1) {
+            const chunk = buffer.slice(0, idx);
+            buffer = buffer.slice(idx + 2);
+            const dataLine = chunk.split('\n').find(l => l.startsWith('data: '));
+            if (!dataLine) continue;
+            let evt;
+            try { evt = JSON.parse(dataLine.slice(6)); } catch (e) { continue; }
+            if (evt.type === 'progress' && evt.line) {
+              this.cloneProgress.push(evt.line);
+              this.$nextTick(() => {
+                if (this.$refs.cloneLog) this.$refs.cloneLog.scrollTop = this.$refs.cloneLog.scrollHeight;
+              });
+            } else if (evt.type === 'phase') {
+              this.statusText = '{{ t("newproject.phase", lang) }}: ' + evt.phase;
+            } else if (evt.type === 'done' && evt.slug) {
+              createdSlug = evt.slug;
+              this.statusText = '{{ t("setup_binding.bound", lang) }} (' + (evt.default_branch || 'main') + ')';
+            } else if (evt.type === 'error') {
+              this.error = true;
+              this.statusText = '✗ ' + (evt.message || evt.code || 'error');
+              this.submitting = false;
+              return;
+            }
+          }
+        }
+        if (createdSlug && typeof refreshBindingsAndOpen === 'function') {
+          await refreshBindingsAndOpen(createdSlug);
+        } else if (!createdSlug) {
+          this.error = true;
+          this.statusText = 'Stream ended without success event';
+          this.submitting = false;
+        }
+      } catch (e) {
+        this.error = true;
+        this.statusText = e.message || 'Network error';
+        this.submitting = false;
+      }
+    },
+  };
+}
+</script>

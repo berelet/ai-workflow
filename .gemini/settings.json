@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "tessl": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@tessl/mcp-server"
+      ]
+    }
+  }
+}

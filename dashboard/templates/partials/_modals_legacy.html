@@ -1,0 +1,1269 @@
+<!-- Alpine.js modal components — replaces legacy hidden-class modals -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     1. DELETE TASK MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="deleteTaskModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" @click.stop>
+    <h3 data-i18n="modal.delete.title">Delete</h3>
+    <p data-i18n="modal.delete.confirm">Enter name to confirm:</p>
+    <p class="task-name" x-text="name"></p>
+    <input x-model="confirmInput"
+           data-i18n-placeholder="modal.delete.confirm"
+           x-ref="confirmField">
+    <div class="modal-btns">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button class="btn-confirm-del"
+              :disabled="confirmInput.trim() !== name"
+              @click="confirm()"
+              data-i18n="modal.delete.button">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     2. DELETE PROJECT MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="deleteProjectModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" @click.stop style="max-width:520px">
+    <h3 style="color:var(--color-danger)" data-i18n="modal.delete.title">Delete</h3>
+    <p data-i18n="modal.delete.confirm">Enter name to confirm:</p>
+    <p class="task-name" style="font-size:14px;margin:8px 0" x-text="projectName"></p>
+    <input x-model="confirmInput"
+           data-i18n-placeholder="modal.delete.confirm"
+           x-ref="confirmField">
+
+    <!-- Dirty/unpushed warning panel (shown after first attempt returned 409) -->
+    <div x-show="hasUncommitted" x-cloak style="margin-top:14px;padding:12px;border:1px solid var(--color-danger);border-radius:var(--radius-sm);background:rgba(248,81,73,0.08)">
+      <p style="font-size:12px;color:var(--color-danger);margin-bottom:8px;font-weight:500" data-i18n="modal.delete.uncommitted_warning">Uncommitted work detected — deletion will lose this:</p>
+      <template x-if="dirty.length > 0">
+        <div style="margin-bottom:8px">
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:4px" data-i18n="modal.delete.dirty_files">Modified files:</p>
+          <pre style="font-size:11px;color:var(--text-secondary);max-height:120px;overflow-y:auto;background:var(--bg-primary);padding:6px;border-radius:var(--radius-sm);white-space:pre-wrap"><template x-for="line in dirty" :key="line"><span x-text="line + '\n'"></span></template></pre>
+        </div>
+      </template>
+      <template x-if="unpushed.length > 0">
+        <div>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:4px" data-i18n="modal.delete.unpushed_commits">Unpushed commits:</p>
+          <pre style="font-size:11px;color:var(--text-secondary);max-height:120px;overflow-y:auto;background:var(--bg-primary);padding:6px;border-radius:var(--radius-sm);white-space:pre-wrap"><template x-for="line in unpushed" :key="line"><span x-text="line + '\n'"></span></template></pre>
+        </div>
+      </template>
+      <label style="display:flex;align-items:center;gap:6px;margin-top:8px;font-size:12px;color:var(--text-secondary);cursor:pointer">
+        <input type="checkbox" x-model="forceConfirmed" style="margin:0">
+        <span data-i18n="modal.delete.force_ack">I understand and want to delete anyway</span>
+      </label>
+    </div>
+
+    <div x-show="errorMsg" x-cloak style="margin-top:10px;font-size:12px;color:var(--color-danger)" x-text="errorMsg"></div>
+
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button class="btn-confirm-del"
+              :disabled="!canConfirm"
+              @click="confirm()"
+              x-text="hasUncommitted ? 'Force delete' : 'Delete'">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     3. DEPLOY MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="deployModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" style="width:520px" @click.stop>
+    <h3 style="color:var(--color-success)" data-i18n="modal.deploy.title">Deploy to Production</h3>
+    <p style="margin:12px 0;font-size:12px" x-html="infoHtml"></p>
+    <div style="max-height:200px;overflow-y:auto;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:10px;font-size:11px;line-height:1.6;margin-bottom:12px"
+         x-html="commitsHtml"></div>
+    <label class="modal-label" data-i18n="modal.deploy.bump">Version</label>
+    <div class="priority-picker">
+      <button class="pp low" :class="{ active: bump === 'patch' }" @click="bump = 'patch'" data-i18n="modal.deploy.patch">Patch</button>
+      <button class="pp medium" :class="{ active: bump === 'minor' }" @click="bump = 'minor'" data-i18n="modal.deploy.minor">Minor</button>
+      <button class="pp high" :class="{ active: bump === 'major' }" @click="bump = 'major'" data-i18n="modal.deploy.major">Major</button>
+    </div>
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:transparent;color:var(--color-success);border:1px solid var(--color-success);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font)"
+              :disabled="deploying"
+              @click="confirm()"
+              x-text="deploying ? i18n.t('common.loading') : i18n.t('modal.deploy.button')">Deploy</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     4. FOLDER PICKER MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="folderPickerModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     @folder-browse.camel="browse($event.detail)"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" style="width:480px;max-height:70vh;display:flex;flex-direction:column" @click.stop>
+    <h3 data-i18n="newproject.browse">Browse</h3>
+    <div style="font-size:11px;color:var(--text-muted);margin:8px 0;word-break:break-all;padding:6px 8px;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm)"
+         x-text="currentPath"></div>
+    <div style="flex:1;overflow-y:auto;max-height:350px;border:1px solid var(--border);border-radius:var(--radius-sm)"
+         x-html="dirsHtml"
+         @click="if($event.target.dataset.path) browse($event.target.dataset.path)"></div>
+    <div class="modal-btns" style="margin-top:12px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:transparent;color:var(--accent);border:1px solid var(--accent);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font)"
+              @click="selectFolder()"
+              data-i18n="newproject.select_folder">Select this folder</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     5. IMAGE VIEWER MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="imageViewerModal()" x-show="open" x-cloak
+     class="modal-overlay" style="cursor:zoom-out"
+     @click="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.100ms>
+  <img :src="src" style="max-width:90%;max-height:90%;border:1px solid var(--border)">
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     6. ADD TASK MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="addTaskModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms
+     @paste.window="handlePaste($event)">
+  <div class="modal" style="width:480px" @click.stop>
+    <h3 style="color:var(--accent);margin-bottom:16px" data-i18n="modal.add_task.title">New Task</h3>
+
+    <label class="modal-label" data-i18n="modal.add_task.name">Title</label>
+    <input x-model="title" x-ref="titleInput" data-i18n-placeholder="modal.add_task.name">
+
+    <label class="modal-label" data-i18n="modal.add_task.description">Description</label>
+    <textarea x-model="description" rows="4" x-ref="descInput" data-i18n-placeholder="modal.add_task.description"></textarea>
+    <button @click="toggleMicFor('descInput')"
+            style="background:transparent;color:var(--text-secondary);border:1px solid var(--border);padding:4px 8px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px;margin-top:4px"
+            data-i18n-title="terminal.voice">&#127908;</button>
+
+    <label class="modal-label" data-i18n="modal.add_task.images">Images</label>
+    <div style="border:1px dashed var(--border);border-radius:var(--radius-sm);padding:16px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:12px;transition:all 0.15s"
+         @click="$refs.fileInput.click()"
+         @dragover.prevent="$event.currentTarget.style.borderColor='var(--accent)'"
+         @dragleave="$event.currentTarget.style.borderColor='var(--border)'"
+         @drop.prevent="$event.currentTarget.style.borderColor='var(--border)'; handleDrop($event)">
+      <span data-i18n="modal.add_task.images">Drop images or click to select</span>
+      <input type="file" x-ref="fileInput" multiple accept="image/*" style="display:none" @change="handleFileSelect()">
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px" x-html="previewHtml"></div>
+
+    <label class="modal-label" data-i18n="modal.add_task.priority">Priority</label>
+    <div class="priority-picker">
+      <button class="pp high" :class="{ active: priority === 'high' }" @click="priority = 'high'">High</button>
+      <button class="pp medium" :class="{ active: priority === 'medium' }" @click="priority = 'medium'">Medium</button>
+      <button class="pp low" :class="{ active: priority === 'low' }" @click="priority = 'low'">Low</button>
+    </div>
+
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:transparent;color:var(--text-primary);border:1px solid var(--accent);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font)"
+              :disabled="submitting"
+              @click="submit()"
+              data-i18n="modal.add_task.add">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     7. DISCOVERY STAGE MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="discoveryStageModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" style="width:480px" @click.stop>
+    <h3 style="color:var(--accent);margin-bottom:16px" x-text="modalTitle">Discovery</h3>
+    <label class="modal-label">Name</label>
+    <input x-model="name" placeholder="interview">
+    <label class="modal-label">Agent</label>
+    <input x-model="agent" placeholder="discovery-interview">
+    <label class="modal-label" data-i18n="modal.add_task.description">Description</label>
+    <input x-model="description">
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:transparent;color:var(--text-primary);border:1px solid var(--accent);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font)"
+              @click="save()"
+              data-i18n="common.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     8. EDIT TASK MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="editTaskModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms
+     @paste.window="handlePaste($event)">
+  <div class="modal" style="width:520px" @click.stop>
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <h3 style="color:var(--accent);margin:0" x-text="modalTitle" data-i18n="modal.edit_task.title">Edit Task</h3>
+      <button @click="close()" style="background:none;border:none;color:var(--text-muted);font-size:20px;cursor:pointer">&times;</button>
+    </div>
+
+    <label class="modal-label" data-i18n="modal.add_task.name">Title</label>
+    <input x-model="title" data-i18n-placeholder="modal.add_task.name">
+
+    <label class="modal-label" data-i18n="modal.add_task.description">Description</label>
+    <textarea x-model="description" rows="5" data-i18n-placeholder="modal.add_task.description"></textarea>
+
+    <label class="modal-label" data-i18n="modal.add_task.priority">Priority</label>
+    <div class="priority-picker">
+      <button class="pp high" :class="{ active: priority === 'high' }" @click="priority = 'high'">High</button>
+      <button class="pp medium" :class="{ active: priority === 'medium' }" @click="priority = 'medium'">Medium</button>
+      <button class="pp low" :class="{ active: priority === 'low' }" @click="priority = 'low'">Low</button>
+    </div>
+
+    <label class="modal-label" data-i18n="modal.edit_task.status">Status</label>
+    <div class="priority-picker">
+      <template x-for="s in ['backlog','todo','in-progress','done']" :key="s">
+        <button class="pp"
+                :class="{
+                  active: status === s,
+                  high: status === s && s === 'in-progress',
+                  medium: status === s && s !== 'in-progress' && s !== 'done',
+                  low: status === s && s === 'done'
+                }"
+                @click="status = s"
+                x-text="s"></button>
+      </template>
+    </div>
+
+    <!-- Existing images -->
+    <template x-if="existingImages.length > 0">
+      <div>
+        <label class="modal-label" x-text="i18n.t('modal.add_task.images')"></label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <template x-for="(img, idx) in existingImages" :key="idx">
+            <div style="position:relative;width:56px;height:56px">
+              <img :src="typeof img === 'string' ? img : img.url"
+                   style="width:56px;height:56px;object-fit:cover;border-radius:2px;border:1px solid var(--border);cursor:pointer"
+                   @click.stop="openImageModal(typeof img === 'string' ? img : img.url)">
+              <button @click.stop="deleteExistingImage(idx)"
+                      style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:1px solid var(--color-danger);background:var(--bg-primary);color:var(--color-danger);font-size:9px;cursor:pointer;line-height:14px;padding:0">&times;</button>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- Upload new images -->
+    <label class="modal-label" data-i18n="modal.add_task.images">Images</label>
+    <div style="border:1px dashed var(--border);border-radius:var(--radius-sm);padding:12px;text-align:center;cursor:pointer;color:var(--text-muted);font-size:12px;transition:all 0.15s"
+         @click="$refs.editFileInput.click()"
+         @dragover.prevent="$event.currentTarget.style.borderColor='var(--accent)'"
+         @dragleave="$event.currentTarget.style.borderColor='var(--border)'"
+         @drop.prevent="$event.currentTarget.style.borderColor='var(--border)'; handleDrop($event)">
+      <span data-i18n="modal.add_task.images">Drop images or click to select</span>
+      <input type="file" x-ref="editFileInput" multiple accept="image/*" style="display:none" @change="uploadNewImages()">
+    </div>
+
+    <div class="modal-btns" style="margin-top:16px">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:transparent;color:var(--text-primary);border:1px solid var(--accent);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font)"
+              :disabled="submitting"
+              @click="save()"
+              data-i18n="modal.edit_task.save">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     9. RUN PIPELINE MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+<div x-data="runPipelineModal()" x-show="open" x-cloak
+     class="modal-overlay"
+     @click.self="close()"
+     @keydown.escape.window="close()"
+     x-transition.opacity.duration.150ms>
+  <div class="modal" style="width:400px" @click.stop>
+    <h3 style="color:var(--accent);margin-bottom:16px" data-i18n="modal.run.title">Run Pipeline</h3>
+    <p style="font-size:12px;color:var(--text-muted)">
+      <span data-i18n="modal.run.title">Task</span>:
+      <span style="color:var(--text-primary);font-weight:500" x-text="taskLabel"></span>
+    </p>
+    <label class="modal-label" style="margin-top:16px;" data-i18n="modal.run.select_pipeline">Select pipeline</label>
+    <select x-model="selectedPipeline"
+            style="width:100%;padding:8px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-primary);border-radius:var(--radius-sm);font-family:var(--font);outline:none;margin-bottom:20px;">
+      <template x-for="pl in pipelines" :key="pl.id">
+        <option :value="pl.id" x-text="pl._label || pl.name"></option>
+      </template>
+      <template x-if="pipelines.length === 0">
+        <option value="" x-text="i18n.t('pipeline.no_pipelines')"></option>
+      </template>
+    </select>
+    <!-- Git branch section (US-28) -->
+    <div x-show="hasRepo" x-transition.opacity.duration.200ms
+         style="margin-top:16px; padding:12px; background:var(--bg-primary); border:1px solid var(--border); border-radius:var(--radius-md);"
+         :style="branchError ? 'margin-top:16px; padding:12px; background:var(--bg-primary); border:1px solid var(--color-danger); border-radius:var(--radius-md);' : ''">
+      <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:10px; font-weight:500; display:flex; align-items:center; gap:6px;">
+        <svg style="width:14px;height:14px;" viewBox="0 0 16 16" fill="currentColor">
+          <path d="M9.5 3.25a2.25 2.25 0 1 1 3 2.122V6A2.5 2.5 0 0 1 10 8.5H6a1 1 0 0 0-1 1v1.128a2.251 2.251 0 1 1-1.5 0V5.372a2.25 2.25 0 1 1 1.5 0v1.836A2.493 2.493 0 0 1 6 7h4a1 1 0 0 0 1-1v-.628A2.25 2.25 0 0 1 9.5 3.25Zm-6 0a.75.75 0 1 0 1.5 0 .75.75 0 0 0-1.5 0Zm8.25-.75a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5ZM4.25 12a.75.75 0 1 0 0 1.5.75.75 0 0 0 0-1.5Z"/>
+        </svg>
+        <span data-i18n="modal.run.git_section">Git branch</span>
+      </div>
+      <!-- Radio group -->
+      <div style="display:flex; flex-direction:column; gap:8px;">
+        <!-- Current branch -->
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:6px 8px; border-radius:4px;"
+               @click="branchStrategy='current'; branchError=''">
+          <span style="width:16px; height:16px; border-radius:50%; border:2px solid; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
+                :style="branchStrategy==='current' ? 'border-color:var(--accent)' : 'border-color:var(--border-light)'">
+            <span x-show="branchStrategy==='current'" x-transition.scale.origin.center
+                  style="width:8px; height:8px; background:var(--accent); border-radius:50%;"></span>
+          </span>
+          <span style="font-size:13px; color:var(--text-primary);">
+            <span data-i18n="modal.run.branch_current">Current branch</span>
+            <template x-if="!branchLoading">
+              <code style="font-family:var(--font-code,'JetBrains Mono',monospace); color:#38bdf8; font-size:12px; padding:1px 6px; background:rgba(56,189,248,0.1); border-radius:3px;" x-text="currentBranch"></code>
+            </template>
+            <template x-if="branchLoading">
+              <span style="color:var(--text-muted); font-style:italic; font-size:12px;">...</span>
+            </template>
+          </span>
+        </label>
+        <!-- New branch -->
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer; padding:6px 8px; border-radius:4px;"
+               @click="branchStrategy='new'; branchError=''">
+          <span style="width:16px; height:16px; border-radius:50%; border:2px solid; display:flex; align-items:center; justify-content:center; flex-shrink:0;"
+                :style="branchStrategy==='new' ? 'border-color:var(--accent)' : 'border-color:var(--border-light)'">
+            <span x-show="branchStrategy==='new'" x-transition.scale.origin.center
+                  style="width:8px; height:8px; background:var(--accent); border-radius:50%;"></span>
+          </span>
+          <span style="font-size:13px; color:var(--text-primary);" data-i18n="modal.run.branch_new">New branch</span>
+        </label>
+      </div>
+      <!-- Branch name input -->
+      <div x-show="branchStrategy==='new'"
+           x-transition:enter="transition ease-out duration-200"
+           x-transition:enter-start="opacity-0 transform -translate-y-1"
+           x-transition:enter-end="opacity-100 transform translate-y-0"
+           x-transition:leave="transition ease-in duration-150"
+           x-transition:leave-start="opacity-100 transform translate-y-0"
+           x-transition:leave-end="opacity-0 transform -translate-y-1"
+           style="margin-top:10px; padding-left:32px;">
+        <div style="font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:1px; margin-bottom:4px;" data-i18n="modal.run.branch_name_placeholder">Branch name</div>
+        <input type="text" x-model="branchName" @input="validateBranch()"
+               style="width:100%; padding:7px 10px; border:1px solid var(--border); background:var(--bg-secondary); color:var(--text-primary); border-radius:var(--radius-sm); font-size:13px; font-family:var(--font-code,'JetBrains Mono',monospace); outline:none;"
+               :style="(branchNameError||branchError) ? 'border-color:var(--color-danger)' : ''"
+               :placeholder="i18n.t('modal.run.branch_name_placeholder')">
+        <div x-show="branchNameError" style="font-size:11px; color:var(--color-danger); margin-top:4px;" data-i18n="modal.run.branch_validation_error">Allowed: a-z, 0-9, -</div>
+        <div x-show="branchError" style="font-size:11px; color:var(--color-danger); margin-top:4px;" x-text="branchError"></div>
+      </div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" @click="close()" data-i18n="modal.cancel">Cancel</button>
+      <button style="background:var(--color-success);color:var(--bg-primary);border:1px solid var(--color-success);padding:6px 20px;border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font);font-weight:500;"
+              :disabled="loading || !selectedPipeline || (hasRepo && branchStrategy==='new' && (!branchName || branchNameError))"
+              @click="confirm()"
+              x-text="loading ? '...' : i18n.t('modal.run.start')">Start</button>
+    </div>
+  </div>
+</div>
+
+<!-- Node config overlay & panel — defined in _pipeline.html -->
+
+<!-- ═══════════════════════════════════════════════════════════════
+     ALPINE COMPONENT DEFINITIONS + GLOBAL BRIDGE FUNCTIONS
+     ═══════════════════════════════════════════════════════════════ -->
+<script>
+document.addEventListener('alpine:init', () => {
+
+  /* ─── Alpine Store: modals ─── */
+  Alpine.store('modals', {
+    addTask:        { open: false, defaultStatus: 'todo' },
+    editTask:       { open: false, id: null },
+    deleteTask:     { open: false, id: null, name: '' },
+    deleteProject:  { open: false },
+    deploy:         { open: false },
+    folderPicker:   { open: false },
+    imageViewer:    { open: false, src: '' },
+    runPipeline:    { open: false, id: null, taskName: '' },
+    discoveryStage: { open: false, idx: -1 },
+  });
+
+  /* ─── Branch badge in topbar (live current branch + checkout + base_branch update) ─── */
+  Alpine.data('branchBadge', () => ({
+    currentBranch: '',
+    baseBranch: '',
+    hasRepo: false,
+    dirty: [],
+    unpushed: [],
+    newBranch: '',
+    open: false,
+    saving: false,
+    error: '',
+    needsForce: false,
+
+    init() {
+      this.refresh();
+      window.addEventListener('project-changed', () => {
+        this.open = false;
+        this.error = '';
+        this.needsForce = false;
+        this.refresh();
+      });
+    },
+
+    get displayBranch() {
+      // Show live working tree branch if available, otherwise the DB base_branch
+      return this.currentBranch || this.baseBranch || '';
+    },
+
+    get isDirty() {
+      return this.dirty.length > 0 || this.unpushed.length > 0;
+    },
+
+    async refresh() {
+      const slug = AppState.currentProject;
+      if (!slug) {
+        this.currentBranch = ''; this.baseBranch = ''; this.hasRepo = false;
+        return;
+      }
+      // Initial value from bootstrap (instant), then refine with live status
+      this.baseBranch = (AppState.baseBranches && AppState.baseBranches[slug]) || '';
+      this.currentBranch = this.baseBranch;
+      try {
+        const r = await API.get('/api/projects/' + encodeURIComponent(slug) + '/branch-status');
+        this.hasRepo = !!r.has_repo;
+        this.currentBranch = r.current_branch || '';
+        this.baseBranch = r.base_branch || '';
+        this.dirty = r.dirty || [];
+        this.unpushed = r.unpushed || [];
+        this.newBranch = this.currentBranch || this.baseBranch;
+      } catch (e) {
+        // Keep initial bootstrap value silently — badge still shows something
+      }
+    },
+
+    async save(force) {
+      const slug = AppState.currentProject;
+      const value = (this.newBranch || '').trim();
+      if (!slug || !value) return;
+      this.saving = true;
+      this.error = '';
+      try {
+        const res = await fetch('/api/projects/' + encodeURIComponent(slug) + '/branch', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'same-origin',
+          body: JSON.stringify({ branch: value, force: !!force }),
+        });
+        const body = await res.json().catch(() => ({}));
+        if (res.status === 409 && body.error === 'dirty_or_unpushed') {
+          this.dirty = body.dirty || [];
+          this.unpushed = body.unpushed || [];
+          this.needsForce = true;
+          this.error = body.message || '';
+          this.saving = false;
+          return;
+        }
+        if (!res.ok) {
+          this.error = body.message || body.detail || body.error || ('HTTP ' + res.status);
+          this.saving = false;
+          return;
+        }
+        // Success — update local state and AppState mirror
+        this.currentBranch = body.current_branch || body.branch;
+        this.baseBranch = body.branch;
+        if (!AppState.baseBranches) AppState.baseBranches = {};
+        AppState.baseBranches[slug] = body.branch;
+        this.dirty = [];
+        this.unpushed = [];
+        this.needsForce = false;
+        this.open = false;
+        // Refresh active tab so file lists pick up the new branch state
+        if (typeof loadProject === 'function') loadProject();
+      } catch (e) {
+        this.error = e.message || 'Network error';
+      } finally {
+        this.saving = false;
+      }
+    },
+  }));
+
+  /* ─── 1. Delete task ─── */
+  Alpine.data('deleteTaskModal', () => ({
+    get open()  { return Alpine.store('modals').deleteTask.open; },
+    set open(v) { Alpine.store('modals').deleteTask.open = v; },
+    get name()  { return Alpine.store('modals').deleteTask.name; },
+    confirmInput: '',
+
+    close() { this.open = false; this.confirmInput = ''; },
+
+    async confirm() {
+      const id = Alpine.store('modals').deleteTask.id;
+      if (!id) return;
+      await API.del('/api/projects/' + AppState.currentProject + '/backlog/' + id);
+      this.close();
+      loadProject();
+    },
+
+    init() {
+      this.$watch('open', (v) => {
+        if (v) this.$nextTick(() => this.$refs.confirmField && this.$refs.confirmField.focus());
+      });
+    }
+  }));
+
+  /* ─── 2. Delete project ─── */
+  Alpine.data('deleteProjectModal', () => ({
+    get open()  { return Alpine.store('modals').deleteProject.open; },
+    set open(v) { Alpine.store('modals').deleteProject.open = v; },
+    get projectName() { return AppState.currentProject || ''; },
+    confirmInput: '',
+    dirty: [],
+    unpushed: [],
+    hasUncommitted: false,
+    forceConfirmed: false,
+    errorMsg: '',
+
+    get canConfirm() {
+      if (this.confirmInput.trim() !== this.projectName) return false;
+      if (this.hasUncommitted && !this.forceConfirmed) return false;
+      return true;
+    },
+
+    close() {
+      this.open = false;
+      this.confirmInput = '';
+      this.dirty = [];
+      this.unpushed = [];
+      this.hasUncommitted = false;
+      this.forceConfirmed = false;
+      this.errorMsg = '';
+    },
+
+    async confirm() {
+      this.errorMsg = '';
+      const url = '/api/projects/' + encodeURIComponent(AppState.currentProject) +
+                  (this.hasUncommitted ? '?force=true' : '');
+      try {
+        const res = await fetch(url, { method: 'DELETE', credentials: 'same-origin' });
+        if (res.status === 409) {
+          // Uncommitted work detected — show warning panel, require explicit confirmation
+          const body = await res.json().catch(() => ({}));
+          this.dirty = body.dirty || [];
+          this.unpushed = body.unpushed || [];
+          this.hasUncommitted = true;
+          this.errorMsg = body.message || '';
+          return;
+        }
+        if (!res.ok) {
+          let detail = 'HTTP ' + res.status;
+          try {
+            const body = await res.json();
+            detail = body.detail || body.error || JSON.stringify(body);
+          } catch (e) {}
+          this.errorMsg = detail;
+          return;
+        }
+        // Success — refresh
+        this.close();
+        AppState.allProjects = await API.get('/api/projects');
+        const sel = document.querySelector('#project-select');
+        if (sel) sel.innerHTML = AppState.allProjects.map(p => '<option value="' + escapeHtml(p) + '">' + escapeHtml(p) + '</option>').join('');
+        AppState.currentProject = AppState.allProjects[0] || '';
+        if (AppState.currentProject && typeof switchProject === 'function') switchProject();
+      } catch (e) {
+        this.errorMsg = e.message || 'Network error';
+      }
+    },
+
+    init() {
+      this.$watch('open', (v) => {
+        if (v) this.$nextTick(() => this.$refs.confirmField && this.$refs.confirmField.focus());
+      });
+    }
+  }));
+
+  /* ─── 3. Deploy ─── */
+  Alpine.data('deployModal', () => ({
+    get open()  { return Alpine.store('modals').deploy.open; },
+    set open(v) { Alpine.store('modals').deploy.open = v; },
+    bump: 'patch',
+    deploying: false,
+    infoHtml: '',
+    commitsHtml: '',
+
+    close() { this.open = false; },
+
+    async loadInfo() {
+      this.infoHtml = i18n.t('common.loading');
+      this.commitsHtml = '';
+      this.bump = 'patch';
+      this.deploying = false;
+      try {
+        const info = await API.get('/api/projects/' + AppState.currentProject + '/deploy-info');
+        if (info.error) { this.infoHtml = escapeHtml(info.error); return; }
+        this.infoHtml = '<b>' + escapeHtml(AppState.currentProject) + '</b>: develop &rarr; master &nbsp;|&nbsp; ' +
+          i18n.t('modal.deploy.tag') + ': <b>' + escapeHtml(info.last_tag) + '</b> &nbsp;|&nbsp; ' +
+          i18n.t('modal.deploy.commits') + ': <b>' + info.commits.length + '</b>';
+        this.commitsHtml = info.commits.length
+          ? info.commits.map(c => '<div style="color:#e2e8f0">' + escapeHtml(c) + '</div>').join('')
+          : '<div style="color:#64748b">' + i18n.t('common.no_data') + '</div>';
+      } catch(e) { this.infoHtml = i18n.t('common.error') + ': ' + escapeHtml(e.message); }
+    },
+
+    async confirm() {
+      this.deploying = true;
+      try {
+        const res = await API.post('/api/projects/' + AppState.currentProject + '/deploy', { bump: this.bump });
+        if (res.ok) {
+          alert(res.prev_tag + ' -> ' + res.tag);
+          this.close();
+        } else {
+          alert(i18n.t('common.error') + ': ' + (res.error || JSON.stringify(res)));
+        }
+      } catch(e) { alert(i18n.t('common.error') + ': ' + e.message); }
+      this.deploying = false;
+    },
+
+    init() {
+      this.$watch('open', (v) => { if (v) this.loadInfo(); });
+    }
+  }));
+
+  /* ─── 4. Folder picker ─── */
+  Alpine.data('folderPickerModal', () => ({
+    get open()  { return Alpine.store('modals').folderPicker.open; },
+    set open(v) { Alpine.store('modals').folderPicker.open = v; },
+    currentPath: '~',
+    dirsHtml: '',
+
+    close() { this.open = false; },
+
+    selectFolder() {
+      const repo = document.querySelector('#np-repo');
+      if (repo) {
+        repo.value = this.currentPath;
+        repo.dispatchEvent(new Event('input'));
+      }
+      this.close();
+    },
+
+    async browse(path) {
+      const res = await API.get('/api/browse?path=' + encodeURIComponent(path));
+      if (res.error) return;
+      this.currentPath = res.path;
+      let html = '';
+      const parent = res.path.replace(/\/[^/]+\/?$/, '') || '/';
+      if (res.path !== '/') {
+        html += '<div data-path="' + escapeHtml(parent) + '" class="folder-item" style="color:var(--text-muted)">..</div>';
+      }
+      for (const dir of (res.dirs || [])) {
+        const full = res.path === '/' ? '/' + dir : res.path + '/' + dir;
+        html += '<div data-path="' + escapeHtml(full) + '" class="folder-item">' + escapeHtml(dir) + '</div>';
+      }
+      if (!(res.dirs || []).length && res.path === '/') {
+        html = '<div style="padding:12px;font-size:12px;color:var(--text-muted);text-align:center">' + i18n.t('common.no_data') + '</div>';
+      }
+      this.dirsHtml = html;
+    },
+
+    init() {
+      this.$watch('open', (v) => {
+        if (v) {
+          const startPath = (document.querySelector('#np-repo') && document.querySelector('#np-repo').value.trim()) || '~';
+          this.browse(startPath);
+        }
+      });
+    }
+  }));
+
+  /* ─── 5. Image viewer ─── */
+  Alpine.data('imageViewerModal', () => ({
+    get open()  { return Alpine.store('modals').imageViewer.open; },
+    set open(v) { Alpine.store('modals').imageViewer.open = v; },
+    get src()   { return Alpine.store('modals').imageViewer.src; },
+    close() { this.open = false; }
+  }));
+
+  /* ─── 6. Add task ─── */
+  Alpine.data('addTaskModal', () => ({
+    get open()  { return Alpine.store('modals').addTask.open; },
+    set open(v) { Alpine.store('modals').addTask.open = v; },
+    title: '',
+    description: '',
+    priority: 'medium',
+    pendingFiles: [],
+    previewHtml: '',
+    submitting: false,
+
+    close() {
+      this.open = false;
+      this.title = '';
+      this.description = '';
+      this.priority = 'medium';
+      this.revokeObjectUrls();
+      this.pendingFiles = [];
+      this.previewHtml = '';
+      AppState.pendingFiles = [];
+    },
+
+    revokeObjectUrls() {
+      // Revoke any blob URLs to free memory
+      this._blobUrls && this._blobUrls.forEach(u => URL.revokeObjectURL(u));
+      this._blobUrls = [];
+    },
+
+    renderPreview() {
+      this._blobUrls = this._blobUrls || [];
+      // Revoke old URLs before creating new ones
+      this._blobUrls.forEach(u => URL.revokeObjectURL(u));
+      this._blobUrls = [];
+      this.previewHtml = this.pendingFiles.map((f, i) => {
+        const url = URL.createObjectURL(f);
+        this._blobUrls.push(url);
+        return '<div style="position:relative;width:56px;height:56px">' +
+          '<img src="' + url + '" style="width:56px;height:56px;object-fit:cover;border-radius:2px;border:1px solid var(--border)">' +
+          '<button onclick="window._addTaskRemoveImage(' + i + ')" style="position:absolute;top:-4px;right:-4px;width:16px;height:16px;border-radius:50%;border:1px solid var(--color-danger);background:var(--bg-primary);color:var(--color-danger);font-size:9px;cursor:pointer;line-height:14px;padding:0">&times;</button>' +
+          '</div>';
+      }).join('');
+    },
+
+    removeImage(idx) {
+      this.pendingFiles.splice(idx, 1);
+      AppState.pendingFiles = this.pendingFiles;
+      this.renderPreview();
+    },
+
+    addFiles(files) {
+      this.pendingFiles.push(...files);
+      AppState.pendingFiles = this.pendingFiles;
+      this.renderPreview();
+    },
+
+    handleFileSelect() {
+      const files = Array.from(this.$refs.fileInput.files);
+      this.addFiles(files);
+      this.$refs.fileInput.value = '';
+    },
+
+    handleDrop(e) {
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      this.addFiles(files);
+    },
+
+    handlePaste(e) {
+      if (!this.open) return;
+      const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+      if (files.length) { e.preventDefault(); this.addFiles(files); }
+    },
+
+    toggleMicFor(refName) {
+      const el = this.$refs[refName];
+      if (el && typeof window.toggleMicFor === 'function') {
+        window.toggleMicFor(el.id || refName);
+      }
+    },
+
+    async submit() {
+      if (!this.title.trim()) return;
+      this.submitting = true;
+      try {
+        const fd = new FormData();
+        fd.append('task', this.title);
+        fd.append('description', this.description);
+        fd.append('priority', this.priority);
+        fd.append('status', Alpine.store('modals').addTask.defaultStatus || 'todo');
+        for (const f of this.pendingFiles) fd.append('images', f);
+        await API.postForm('/api/projects/' + AppState.currentProject + '/backlog', fd);
+        this.close();
+        loadProject();
+      } catch(e) { console.error('addTask:', e); }
+      this.submitting = false;
+    },
+
+    init() {
+      this.$watch('open', (v) => {
+        if (v) {
+          this.priority = 'medium';
+          this.$nextTick(() => this.$refs.titleInput && this.$refs.titleInput.focus());
+        }
+      });
+    }
+  }));
+
+  /* ─── 7. Discovery stage ─── */
+  Alpine.data('discoveryStageModal', () => ({
+    get open()  { return Alpine.store('modals').discoveryStage.open; },
+    set open(v) { Alpine.store('modals').discoveryStage.open = v; },
+    name: '',
+    agent: '',
+    description: '',
+    modalTitle: 'Discovery',
+    _config: null,
+
+    close() { this.open = false; },
+
+    async _loadConfig() {
+      if (!AppState.currentProject) return;
+      try {
+        this._config = await API.get('/api/projects/' + encodeURIComponent(AppState.currentProject) + '/pipeline-config');
+      } catch(e) {
+        this._config = { stages: ['PM','BA','DEV','QA','COMMIT'], discovery_stages: [] };
+      }
+    },
+
+    async save() {
+      if (!this._config) return;
+      const idx = Alpine.store('modals').discoveryStage.idx;
+      if (idx < 0 || !this._config.discovery_stages[idx]) return;
+      const s = this._config.discovery_stages[idx];
+      s.name = this.name.trim();
+      s.agent = this.agent.trim() || ('discovery-' + s.name);
+      s.description = this.description.trim();
+      this.close();
+      try {
+        await API.put('/api/projects/' + encodeURIComponent(AppState.currentProject) + '/pipeline-config', this._config);
+      } catch(e) { console.error('savePipelineConfig:', e); }
+    },
+
+    init() {
+      this.$watch('open', async (v) => {
+        if (v) {
+          await this._loadConfig();
+          if (!this._config) return;
+          const idx = Alpine.store('modals').discoveryStage.idx;
+          if (idx >= 0 && this._config.discovery_stages[idx]) {
+            const s = this._config.discovery_stages[idx];
+            this.name = s.name || '';
+            this.agent = s.agent || '';
+            this.description = s.description || '';
+            this.modalTitle = 'Discovery: ' + (s.name || '');
+          }
+        }
+      });
+    }
+  }));
+
+  /* ─── 8. Edit task ─── */
+  Alpine.data('editTaskModal', () => ({
+    get open()  { return Alpine.store('modals').editTask.open; },
+    set open(v) { Alpine.store('modals').editTask.open = v; },
+    taskId: null,
+    title: '',
+    description: '',
+    priority: 'medium',
+    status: 'todo',
+    existingImages: [],
+    modalTitle: '',
+    submitting: false,
+
+    close() {
+      this.open = false;
+      this.taskId = null;
+      this.existingImages = [];
+    },
+
+    async loadTask(id) {
+      // Ensure backlog is loaded (may be empty on first open if tabs rendered server-side)
+      if (!AppState.backlogItems || !AppState.backlogItems.length) {
+        try {
+          const data = await API.get('/api/projects/' + encodeURIComponent(AppState.currentProject));
+          AppState.backlogItems = data.backlog || [];
+        } catch(e) { console.error('loadTask: fetch backlog failed', e); }
+      }
+      const item = AppState.backlogItems.find(i => String(i.id) === String(id));
+      if (!item) return;
+      this.taskId = id;
+      this.title = item.task || item.title || '';
+      this.description = item.description || '';
+      this.priority = item.priority || 'medium';
+      this.status = item.status || 'todo';
+      this.existingImages = item.images || [];
+      this.modalTitle = '#' + id + ' ' + i18n.t('modal.edit_task.title');
+    },
+
+    openImageModal(src) {
+      window.openImageModal(src);
+    },
+
+    async deleteExistingImage(idx) {
+      const img = this.existingImages[idx];
+      const url = typeof img === 'string' ? img : img.url;
+      const fname = url.split('/').pop();
+      await API.del('/api/projects/' + AppState.currentProject + '/backlog/' + this.taskId + '/images/' + fname);
+      await loadProject();
+      const item = AppState.backlogItems.find(i => String(i.id) === String(this.taskId));
+      this.existingImages = item ? (item.images || []) : [];
+    },
+
+    async uploadNewImages() {
+      const files = Array.from(this.$refs.editFileInput.files).filter(f => f.type.startsWith('image/'));
+      if (!files.length) return;
+      const fd = new FormData();
+      for (const f of files) fd.append('images', f);
+      await API.postForm('/api/projects/' + AppState.currentProject + '/backlog/' + this.taskId + '/images', fd);
+      this.$refs.editFileInput.value = '';
+      await loadProject();
+      const item = AppState.backlogItems.find(i => String(i.id) === String(this.taskId));
+      this.existingImages = item ? (item.images || []) : [];
+    },
+
+    handleDrop(e) {
+      const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+      if (!files.length) return;
+      const dt = new DataTransfer();
+      files.forEach(f => dt.items.add(f));
+      this.$refs.editFileInput.files = dt.files;
+      this.uploadNewImages();
+    },
+
+    handlePaste(e) {
+      if (!this.open) return;
+      const files = Array.from(e.clipboardData.files).filter(f => f.type.startsWith('image/'));
+      if (files.length) {
+        e.preventDefault();
+        const dt = new DataTransfer();
+        files.forEach(f => dt.items.add(f));
+        this.$refs.editFileInput.files = dt.files;
+        this.uploadNewImages();
+      }
+    },
+
+    async save() {
+      if (!this.title.trim()) return;
+      this.submitting = true;
+      try {
+        await API.put('/api/projects/' + AppState.currentProject + '/backlog/' + this.taskId, {
+          task: this.title,
+          description: this.description,
+          priority: this.priority,
+          status: this.status
+        });
+        this.close();
+        loadProject();
+      } catch(e) { console.error('saveEditTask:', e); }
+      this.submitting = false;
+    },
+
+    init() {
+      this.$watch('open', async (v) => {
+        if (v) {
+          const id = Alpine.store('modals').editTask.id;
+          if (id) await this.loadTask(id);
+        }
+      });
+    }
+  }));
+
+  /* ─── 9. Run pipeline ─── */
+  Alpine.data('runPipelineModal', () => ({
+    get open()  { return Alpine.store('modals').runPipeline.open; },
+    set open(v) { Alpine.store('modals').runPipeline.open = v; },
+    pipelines: [],
+    selectedPipeline: '',
+    taskLabel: '',
+    loading: true,
+    hasRepo: false,
+    currentBranch: '',
+    branchPrefix: '',
+    branchLoading: true,
+    branchStrategy: 'current',
+    branchName: '',
+    branchError: '',
+    branchNameError: false,
+
+    close() {
+      this.open = false;
+      this.pipelines = [];
+      this.loading = true;
+      this.hasRepo = false;
+      this.branchLoading = true;
+      this.branchStrategy = 'current';
+      this.branchName = '';
+      this.branchError = '';
+      this.branchNameError = false;
+    },
+
+    validateBranch() {
+      this.branchError = '';
+      var re = /^[a-zA-Z0-9][a-zA-Z0-9._/\-]*[a-zA-Z0-9]$/;
+      this.branchNameError = this.branchName.length > 0
+        && (this.branchName.length < 2 || this.branchName.length > 200 || !re.test(this.branchName) || this.branchName.indexOf('..') !== -1);
+    },
+
+    async loadBranchInfo() {
+      this.branchLoading = true;
+      this.hasRepo = false;
+      this.branchError = '';
+      this.branchNameError = false;
+      this.branchStrategy = 'current';
+      try {
+        var r = await API.get('/api/pipeline/git-branch/' + encodeURIComponent(AppState.currentProject));
+        if (r && r.has_repo) {
+          this.hasRepo = true;
+          this.currentBranch = r.branch || '';
+          this.branchPrefix = r.prefix || '';
+          var store = Alpine.store('modals').runPipeline;
+          this.branchName = (r.prefix || '') + '-' + store.id;
+        }
+      } catch(e) {
+        this.hasRepo = false;
+      }
+      this.branchLoading = false;
+    },
+
+    async loadPipelines() {
+      this.loading = true;
+      const store = Alpine.store('modals').runPipeline;
+      this.taskLabel = '#' + store.id + ' ' + store.taskName;
+      try {
+        // Fetch all pipelines (project + global read-only)
+        const plList = await API.get('/api/projects/' + AppState.currentProject + '/pipelines') || [];
+        plList.forEach(function(p) {
+          var suffix = ' (' + (p.stages_order || []).length + ')';
+          if (p.final_task_status && p.final_task_status !== 'done') suffix = ' (' + (p.stages_order || []).length + ' → ' + p.final_task_status + ')';
+          if (p.readonly) suffix += ' 🌐';
+          p._label = p.name + suffix;
+        });
+        this.pipelines = plList;
+        this.selectedPipeline = plList.length ? plList[0].id : '';
+      } catch(e) {
+        this.pipelines = [];
+        this.selectedPipeline = '';
+      }
+      this.loading = false;
+    },
+
+    async confirm() {
+      var store = Alpine.store('modals').runPipeline;
+      var id = store.id;
+      var task = store.taskName;
+      var plId = this.selectedPipeline;
+      var pl = this.pipelines.find(function(p) { return p.id === plId; });
+      var plName = pl ? pl.name : '';
+
+      // Create branch if strategy is "new"
+      var branchForPrompt = '';
+      if (this.hasRepo) {
+        if (this.branchStrategy === 'new' && this.branchName) {
+          try {
+            this.loading = true;
+            var data = await API.post('/api/pipeline/git-branch/' + encodeURIComponent(AppState.currentProject) + '/create', {branch_name: this.branchName});
+            if (data.error || data.detail) {
+              this.branchError = data.detail || data.error || 'Error creating branch';
+              this.loading = false;
+              return;
+            }
+            branchForPrompt = this.branchName;
+          } catch(e) {
+            this.branchError = 'Network error';
+            this.loading = false;
+            return;
+          }
+        } else {
+          branchForPrompt = this.currentBranch;
+        }
+      }
+
+      // Close AFTER capturing data
+      this.open = false;
+
+      // Move to in-progress — only change status, preserve other fields
+      API.put('/api/projects/' + AppState.currentProject + '/backlog/' + id, {
+        task: task,
+        status: 'in-progress'
+      });
+
+      // Build prompt with inline pipeline graph (pipelines are in DB, not files)
+      var pipelineGraph = '';
+      if (pl && pl.graph) {
+        try { pipelineGraph = '\n\nPipeline graph (Drawflow JSON):\n```json\n' + JSON.stringify(pl.graph) + '\n```'; } catch(e) {}
+      }
+      var lang = window.__lang || 'uk';
+      var branchPart = branchForPrompt ? ' Branch: ' + branchForPrompt + '.' : '';
+      var prompt = 'read orchestrator/instructions.md, project ' + AppState.currentProject + ', take task ' + id + ', pipeline "' + plName + '".' + branchPart + ' Language: ' + lang + ' — write all output, artifacts, commit messages in this language.' + pipelineGraph;
+
+      // Store pending prompt, then switch to terminal tab
+      AppState._pendingTerminalPrompt = prompt;
+      AppState._pendingTaskId = id;
+      AppState._pendingTaskName = task;
+      if (typeof showTab === 'function') showTab('terminal');
+
+      // Wait for HTMX swap to complete before setting prompt and starting
+      document.addEventListener('htmx:afterSwap', function _onSwap(e) {
+        if (e.detail.target && e.detail.target.id === 'tab-content') {
+          document.removeEventListener('htmx:afterSwap', _onSwap);
+          var el = document.querySelector('#term-prompt');
+          if (el) el.value = AppState._pendingTerminalPrompt || prompt;
+          if (typeof startRun === 'function') startRun();
+          AppState._pendingTerminalPrompt = null;
+        }
+      });
+    },
+
+    init() {
+      this.$watch('open', (v) => {
+        if (v) {
+          this.loadPipelines();
+          this.loadBranchInfo();
+        }
+      });
+    }
+  }));
+
+}); // end alpine:init
+
+
+/* ═══════════════════════════════════════════════════════════════
+   GLOBAL BRIDGE FUNCTIONS
+   Called by tab partials and legacy code to open modals.
+   ═══════════════════════════════════════════════════════════════ */
+
+// Add task
+window.openAddModal = function(defaultStatus) {
+  const s = Alpine.store('modals').addTask;
+  s.defaultStatus = defaultStatus || 'todo';
+  s.open = true;
+};
+window.closeAddModal = function() {
+  Alpine.store('modals').addTask.open = false;
+};
+window._addTaskRemoveImage = function(idx) {
+  // Called from inline onclick in preview HTML — delegates to the Alpine component
+  const comp = document.querySelector('[x-data="addTaskModal()"]');
+  if (comp && comp._x_dataStack) {
+    const data = comp._x_dataStack[0];
+    if (data && data.removeImage) data.removeImage(idx);
+  }
+};
+
+// Edit task
+window.openEditModal = function(id) {
+  const s = Alpine.store('modals').editTask;
+  s.id = id;
+  s.open = true;
+};
+window.closeEditModal = function() {
+  Alpine.store('modals').editTask.open = false;
+};
+
+// Delete task
+window.delTask = function(id, name) {
+  const s = Alpine.store('modals').deleteTask;
+  s.id = id;
+  s.name = name;
+  s.open = true;
+};
+window.closeDeleteModal = function() {
+  Alpine.store('modals').deleteTask.open = false;
+};
+
+// Delete project
+window.openDeleteProjectModal = function() {
+  Alpine.store('modals').deleteProject.open = true;
+};
+
+// Deploy
+window.openDeployModal = function() {
+  Alpine.store('modals').deploy.open = true;
+};
+window.closeDeployModal = function() {
+  Alpine.store('modals').deploy.open = false;
+};
+
+// Folder picker
+window.openFolderPicker = function() {
+  Alpine.store('modals').folderPicker.open = true;
+};
+window.closeFolderPicker = function() {
+  Alpine.store('modals').folderPicker.open = false;
+};
+window._folderBrowse = function(path) {
+  // Called from inline onclick in folder list HTML
+  const comp = document.querySelector('[x-data="folderPickerModal()"]');
+  if (!comp) return;
+  // Try Alpine internal data access (multiple Alpine versions)
+  var data = comp._x_dataStack ? comp._x_dataStack[0] : (comp.__x ? comp.__x.$data : null);
+  if (data && data.browse) { data.browse(path); return; }
+  // Fallback: dispatch custom event
+  comp.dispatchEvent(new CustomEvent('folder-browse', { detail: path }));
+};
+// Keep legacy alias
+window.loadFolder = window._folderBrowse;
+window.selectFolder = function() {
+  const comp = document.querySelector('[x-data="folderPickerModal()"]');
+  if (comp && comp._x_dataStack) {
+    const data = comp._x_dataStack[0];
+    if (data && data.selectFolder) data.selectFolder();
+  }
+};
+
+// Image viewer
+window.openImageModal = function(src) {
+  const s = Alpine.store('modals').imageViewer;
+  s.src = src;
+  s.open = true;
+};
+
+// Run pipeline
+window.runTask = function(id, task) {
+  // Close edit modal if open
+  Alpine.store('modals').editTask.open = false;
+  const s = Alpine.store('modals').runPipeline;
+  s.id = id;
+  s.taskName = task;
+  s.open = true;
+};
+window.closeRunModal = function() {
+  Alpine.store('modals').runPipeline.open = false;
+};
+
+// Discovery stage
+window.editDiscoveryStage = function(idx) {
+  const s = Alpine.store('modals').discoveryStage;
+  s.idx = idx;
+  s.open = true;
+};
+window.closeDiscoveryStageModal = function() {
+  Alpine.store('modals').discoveryStage.open = false;
+};
+
+// Legacy compat: some code calls these directly
+window.confirmRunTask = function() {
+  const comp = document.querySelector('[x-data="runPipelineModal()"]');
+  if (comp && comp._x_dataStack) {
+    const data = comp._x_dataStack[0];
+    if (data && data.confirm) data.confirm();
+  }
+};
+
+// Bump picker legacy compat (used in old deploy tests)
+window.pickBump = function(b) {
+  const comp = document.querySelector('[x-data="deployModal()"]');
+  if (comp && comp._x_dataStack) {
+    const data = comp._x_dataStack[0];
+    if (data) data.bump = b;
+  }
+};
+</script>

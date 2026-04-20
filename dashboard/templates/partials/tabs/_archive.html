@@ -1,0 +1,41 @@
+<div id="tab-archive">
+  <input class="archive-search"
+         placeholder="{{ t('archive.search', lang) }}"
+         name="q"
+         hx-get="/ui/partials/tabs/archive"
+         hx-target="#tab-content"
+         hx-swap="innerHTML"
+         hx-trigger="input changed delay:300ms"
+         hx-vals='js:{"project": AppState.currentProject || ""}'>
+
+  <div class="archive-list" id="archive-list">
+    {% set items = backlog_items|selectattr('status', 'equalto', 'archived')|list %}
+
+    {% if not items %}
+    <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:40px">{{ t('archive.empty', lang) }}</div>
+    {% else %}
+    {% for i in items %}
+    {% set task_name = i.task or i.title or '' %}
+    {% set art_count = artifact_counts.get(i.id|string, 0) %}
+    <div class="backlog-card p-{{ i.priority|default('medium') }}" style="cursor:default">
+      <div class="card-header">
+        <span class="card-id">#{{ i.id }}</span>
+        <span class="badge-priority badge-{{ i.priority|default('medium') }}">{{ i.priority|default('medium') }}</span>
+      </div>
+      <div class="card-title">{{ task_name }}</div>
+      {% if i.description %}
+      <div class="card-desc">{{ i.description[:120] }}{% if i.description|length > 120 %}...{% endif %}</div>
+      {% endif %}
+      <div class="card-footer">
+        <div>
+          {% if art_count %}
+          <a class="artifact-badge" href="/artifacts/{{ project }}/{{ i.id }}" target="_blank" title="{{ t('board.artifacts', lang) }}">{{ art_count }} art.</a>
+          {% endif %}
+        </div>
+        <div></div>
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>

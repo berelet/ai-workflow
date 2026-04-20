@@ -1,0 +1,20 @@
+{# Code changes diff partial — loaded via HTMX when clicking a code-changes button #}
+<div class="artifact-view" style="flex:0 0 auto;padding:8px 16px;font-size:12px;color:var(--text-secondary)">
+  {{ t('artifacts.code_changes', lang) }}: {{ code_files|length }}
+</div>
+<div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;">
+  <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
+    {{ t('artifacts.code_changes', lang) }}
+  </div>
+  {% if code_files %}
+  {% for f in code_files %}
+  <div class="code-file" x-data="{ open: false }" @click="open = !open">
+    <span class="file-path">{{ f.path }}</span>
+    <span class="file-action {{ f.action|default('modified') }}">{{ f.action|default('modified') }}</span>
+    <div class="diff-view" x-show="open" x-cloak>{{ (f.diff or '')|format_diff }}</div>
+  </div>
+  {% endfor %}
+  {% else %}
+  <div style="color:var(--text-muted);font-size:11px">{{ t('artifacts.empty', lang) }}</div>
+  {% endif %}
+</div>

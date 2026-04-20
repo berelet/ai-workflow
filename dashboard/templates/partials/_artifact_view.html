@@ -1,0 +1,2 @@
+{# Artifact file content partial — loaded via HTMX when clicking an artifact file #}
+<div class="artifact-view" style="flex:1">{% if artifact_content %}{{ artifact_content }}{% else %}{{ t('artifacts.empty', lang) }}{% endif %}</div>

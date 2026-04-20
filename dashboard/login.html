@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/auth.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>AI Workflow — Login</title>
+</head>
+<body>
+
+<!-- Language toggle -->
+<div class="lang-toggle">
+  <button class="lang-btn" data-lang="uk" onclick="switchLang('uk')">UK</button>
+  <button class="lang-btn" data-lang="en" onclick="switchLang('en')">EN</button>
+</div>
+
+<div class="auth-page">
+  <div class="auth-card">
+    <h1>AI Workflow</h1>
+    <p class="subtitle" data-i18n="auth.sign_in">Sign In</p>
+
+    <!-- Tabs -->
+    <div class="auth-tabs">
+      <button class="auth-tab active" data-tab="login" data-i18n="auth.sign_in" onclick="showAuthTab('login')">Sign In</button>
+      <button class="auth-tab" data-tab="register" data-i18n="auth.register" onclick="showAuthTab('register')">Register</button>
+    </div>
+
+    <!-- Sign In form -->
+    <form class="auth-form active" id="login-form" onsubmit="handleLogin(event)">
+      <div class="field">
+        <label data-i18n="auth.email">Email</label>
+        <input type="email" id="login-email" required autocomplete="email"
+               data-i18n-placeholder="auth.email" placeholder="Email">
+      </div>
+      <div class="field">
+        <label data-i18n="auth.password">Password</label>
+        <input type="password" id="login-password" required autocomplete="current-password"
+               data-i18n-placeholder="auth.password" placeholder="Password">
+      </div>
+      <button type="submit" id="login-btn" data-i18n="auth.sign_in_btn">Sign In</button>
+      <div class="auth-msg" id="login-msg"></div>
+      <div class="auth-switch">
+        <span data-i18n="auth.no_account">Don't have an account?</span>
+        <a onclick="showAuthTab('register')" data-i18n="auth.register">Register</a>
+      </div>
+    </form>
+
+    <!-- Register form -->
+    <form class="auth-form" id="register-form" onsubmit="handleRegister(event)">
+      <div class="field">
+        <label data-i18n="auth.email">Email</label>
+        <input type="email" id="reg-email" required autocomplete="email"
+               data-i18n-placeholder="auth.email" placeholder="Email">
+      </div>
+      <div class="field">
+        <label data-i18n="auth.display_name">Display Name</label>
+        <input type="text" id="reg-name" required autocomplete="name"
+               data-i18n-placeholder="auth.display_name" placeholder="Display Name">
+      </div>
+      <div class="field">
+        <label data-i18n="auth.password">Password</label>
+        <input type="password" id="reg-password" required minlength="8" autocomplete="new-password"
+               data-i18n-placeholder="auth.password" placeholder="Password">
+      </div>
+      <div class="field">
+        <label data-i18n="auth.confirm_password">Confirm Password</label>
+        <input type="password" id="reg-password2" required minlength="8" autocomplete="new-password"
+               data-i18n-placeholder="auth.confirm_password" placeholder="Confirm Password">
+      </div>
+      <button type="submit" id="reg-btn" data-i18n="auth.register_btn">Register</button>
+      <div class="auth-msg" id="reg-msg"></div>
+      <div class="auth-switch">
+        <span data-i18n="auth.has_account">Already have an account?</span>
+        <a onclick="showAuthTab('login')" data-i18n="auth.sign_in">Sign In</a>
+      </div>
+    </form>
+
+  </div>
+</div>
+
+<script src="/static/js/utils/dom.js"></script>
+<script src="/static/js/core/api.js"></script>
+<script src="/static/js/core/auth.js"></script>
+<script src="/static/js/core/i18n.js"></script>
+<script>
+(function() {
+  /* ── Tab switching ─────────────────────────────────────────── */
+  window.showAuthTab = function(tab) {
+    document.querySelectorAll('.auth-tab').forEach(function(el) {
+      el.classList.toggle('active', el.dataset.tab === tab);
+    });
+    document.getElementById('login-form').classList.toggle('active', tab === 'login');
+    document.getElementById('register-form').classList.toggle('active', tab === 'register');
+    // Update subtitle
+    var subtitleKey = tab === 'login' ? 'auth.sign_in' : 'auth.register';
+    document.querySelector('.auth-card .subtitle').textContent = i18n.t(subtitleKey);
+    // Clear messages
+    hideMsg('login-msg');
+    hideMsg('reg-msg');
+  };
+
+  /* ── Message helpers ───────────────────────────────────────── */
+  function showMsg(id, text, type) {
+    var el = document.getElementById(id);
+    el.textContent = text;  // safe: textContent escapes HTML
+    el.className = 'auth-msg visible ' + type;
+  }
+
+  function hideMsg(id) {
+    var el = document.getElementById(id);
+    el.className = 'auth-msg';
+    el.textContent = '';
+  }
+
+  function setLoading(btnId, loading) {
+    var btn = document.getElementById(btnId);
+    if (loading) {
+      btn.disabled = true;
+      btn._origText = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span>' + escapeHtml(btn._origText);
+    } else {
+      btn.disabled = false;
+      btn.textContent = btn._origText || btn.textContent;
+    }
+  }
+
+  /* ── Login ─────────────────────────────────────────────────── */
+  window.handleLogin = async function(e) {
+    e.preventDefault();
+    hideMsg('login-msg');
+
+    var email = document.getElementById('login-email').value.trim();
+    var password = document.getElementById('login-password').value;
+
+    if (!email || !password) {
+      showMsg('login-msg', i18n.t('common.error'), 'error');
+      return;
+    }
+
+    setLoading('login-btn', true);
+    try {
+      await Auth.login(email, password);
+      window.location.href = '/';
+    } catch (err) {
+      var msg = (err && err.detail) || (err && err.message) || i18n.t('common.error');
+      showMsg('login-msg', msg, 'error');
+    } finally {
+      setLoading('login-btn', false);
+    }
+  };
+
+  /* ── Register ──────────────────────────────────────────────── */
+  window.handleRegister = async function(e) {
+    e.preventDefault();
+    hideMsg('reg-msg');
+
+    var email = document.getElementById('reg-email').value.trim();
+    var name = document.getElementById('reg-name').value.trim();
+    var password = document.getElementById('reg-password').value;
+    var password2 = document.getElementById('reg-password2').value;
+
+    if (!email || !name || !password) {
+      showMsg('reg-msg', i18n.t('common.error'), 'error');
+      return;
+    }
+    if (password !== password2) {
+      showMsg('reg-msg', i18n.t('auth.passwords_mismatch'), 'error');
+      return;
+    }
+    if (password.length < 8) {
+      showMsg('reg-msg', i18n.t('auth.password_too_short'), 'error');
+      return;
+    }
+
+    setLoading('reg-btn', true);
+    try {
+      await Auth.register(email, password, name);
+      window.location.href = '/';
+    } catch (err) {
+      var msg = (err && err.detail) || (err && err.message) || i18n.t('common.error');
+      showMsg('reg-msg', msg, 'error');
+    } finally {
+      setLoading('reg-btn', false);
+    }
+  };
+
+  /* ── Language ──────────────────────────────────────────────── */
+  window.switchLang = async function(lang) {
+    await i18n.load(lang);
+    i18n.apply();
+    updateLangButtons(lang);
+    // Update subtitle to match current tab
+    var activeTab = document.querySelector('.auth-tab.active');
+    if (activeTab) {
+      var key = activeTab.dataset.tab === 'login' ? 'auth.sign_in' : 'auth.register';
+      document.querySelector('.auth-card .subtitle').textContent = i18n.t(key);
+    }
+  };
+
+  function updateLangButtons(lang) {
+    document.querySelectorAll('.lang-btn').forEach(function(btn) {
+      btn.classList.toggle('active', btn.dataset.lang === lang);
+    });
+  }
+
+  /* ── Init ──────────────────────────────────────────────────── */
+  async function init() {
+    // Prevent 401 redirect loop on login page
+    API.skipAuthRedirect = true;
+
+    // Check if already authenticated
+    try {
+      var resp = await fetch('/api/auth/me', { credentials: 'same-origin' });
+      if (resp.ok) {
+        var data = await resp.json();
+        if (data && data.user) {
+          window.location.href = '/';
+          return;
+        }
+      }
+    } catch (e) { /* not authenticated, proceed */ }
+
+    // Load language
+    var lang = localStorage.getItem('ai_workflow_lang') || 'uk';
+    await i18n.load(lang);
+    i18n.apply();
+    updateLangButtons(lang);
+
+    // Update subtitle
+    document.querySelector('.auth-card .subtitle').textContent = i18n.t('auth.sign_in');
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

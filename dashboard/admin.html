@@ -1,0 +1,1015 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Workflow — Admin Panel</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #0d1117;
+            --bg2: #161b22;
+            --bg3: #1c2129;
+            --border: #30363d;
+            --text: #c9d1d9;
+            --text2: #8b949e;
+            --accent: #58a6ff;
+            --green: #3fb950;
+            --red: #f85149;
+            --yellow: #d29922;
+            --font: 'Roboto Mono', monospace;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 13px;
+            min-height: 100vh;
+        }
+
+        /* --- Topbar --- */
+        .topbar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            background: var(--bg2);
+            border-bottom: 1px solid var(--border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .topbar-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .topbar-spacer { flex: 1; }
+        .topbar-link {
+            color: var(--text2);
+            text-decoration: none;
+            font-size: 12px;
+            transition: color 0.15s;
+        }
+        .topbar-link:hover { color: var(--text); }
+        .lang-toggle {
+            display: flex;
+            gap: 0;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .lang-btn {
+            padding: 4px 8px;
+            background: transparent;
+            color: var(--text2);
+            border: none;
+            font-family: var(--font);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .lang-btn.active {
+            background: var(--accent);
+            color: var(--bg);
+        }
+        .btn-logout {
+            padding: 4px 12px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text2);
+            font-family: var(--font);
+            font-size: 11px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-logout:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+
+        /* --- Content --- */
+        .content {
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 24px 20px;
+        }
+
+        /* --- Tabs --- */
+        .tabs {
+            display: flex;
+            gap: 0;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid transparent;
+            color: var(--text2);
+            font-family: var(--font);
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .tab-btn:hover { color: var(--text); }
+        .tab-btn.active {
+            color: var(--accent);
+            border-bottom-color: var(--accent);
+        }
+        .tab-panel { display: none; }
+        .tab-panel.active { display: block; }
+
+        /* --- Search --- */
+        .search-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .search-input {
+            flex: 1;
+            max-width: 360px;
+            padding: 8px 12px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 13px;
+        }
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* --- Table --- */
+        .table-wrap {
+            overflow-x: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead { background: var(--bg3); }
+        th {
+            padding: 10px 12px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            white-space: nowrap;
+            border-bottom: 1px solid var(--border);
+        }
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover { background: var(--bg3); }
+
+        /* --- Badges --- */
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-admin {
+            background: rgba(88, 166, 255, 0.15);
+            color: var(--accent);
+            border: 1px solid rgba(88, 166, 255, 0.3);
+        }
+        .badge-user {
+            background: rgba(139, 148, 158, 0.15);
+            color: var(--text2);
+            border: 1px solid rgba(139, 148, 158, 0.3);
+        }
+        .badge-active {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--green);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+        }
+        .badge-blocked {
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--red);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+        }
+        .badge-you {
+            background: rgba(210, 153, 34, 0.15);
+            color: var(--yellow);
+            border: 1px solid rgba(210, 153, 34, 0.3);
+        }
+
+        /* --- Project chips (admin view: superadmin sees only the FACT) --- */
+        .projects-toggle {
+            background: transparent;
+            border: 1px solid var(--border);
+            color: var(--text2);
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-family: var(--font);
+            font-size: 11px;
+            cursor: pointer;
+        }
+        .projects-toggle:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .projects-row {
+            background: var(--bg3);
+        }
+        .projects-row td {
+            padding: 8px 12px 12px 24px;
+        }
+        .project-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .project-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            background: var(--bg2);
+            font-size: 11px;
+            color: var(--text);
+        }
+        .project-chip.private {
+            border-color: rgba(248, 81, 73, 0.4);
+        }
+        .project-chip.public {
+            border-color: rgba(63, 185, 80, 0.4);
+        }
+        .project-chip-icon {
+            font-size: 10px;
+            opacity: 0.7;
+        }
+        .project-chip-role {
+            color: var(--text2);
+            font-size: 10px;
+        }
+
+        /* --- Action buttons --- */
+        .actions-cell {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .btn-sm {
+            padding: 3px 10px;
+            font-family: var(--font);
+            font-size: 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: transparent;
+            color: var(--text2);
+            transition: all 0.15s;
+            white-space: nowrap;
+        }
+        .btn-sm:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn-sm.danger:hover {
+            border-color: var(--red);
+            color: var(--red);
+        }
+        .btn-sm.success:hover {
+            border-color: var(--green);
+            color: var(--green);
+        }
+        .btn-sm:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* --- Reset password inline form --- */
+        .reset-pw-form {
+            display: flex;
+            gap: 4px;
+            align-items: center;
+            margin-top: 4px;
+        }
+        .reset-pw-form input {
+            padding: 3px 8px;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 3px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 11px;
+            width: 140px;
+        }
+        .reset-pw-form input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* --- Pagination --- */
+        .pagination {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding: 8px 0;
+        }
+        .pagination-info {
+            color: var(--text2);
+            font-size: 12px;
+        }
+        .pagination-btns {
+            display: flex;
+            gap: 8px;
+        }
+        .btn-page {
+            padding: 6px 14px;
+            background: var(--bg2);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text2);
+            font-family: var(--font);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-page:hover:not(:disabled) {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+        .btn-page:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        /* --- No data --- */
+        .no-data {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--text2);
+            font-size: 13px;
+        }
+
+        /* --- Loading --- */
+        .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.6s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .loading-state {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            gap: 8px;
+            color: var(--text2);
+        }
+
+        /* --- Services tab --- */
+        .services-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+            align-items: center;
+        }
+        .btn-action {
+            padding: 6px 14px;
+            background: transparent;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text);
+            font-family: var(--font);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-action:hover { border-color: var(--accent); color: var(--accent); }
+        .btn-action.start:hover { border-color: var(--green); color: var(--green); }
+        .btn-action.stop:hover { border-color: var(--red); color: var(--red); }
+        .btn-action:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .svc-group-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 0 6px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 8px;
+        }
+        .svc-group-title:first-child { padding-top: 0; }
+        .svc-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 6px;
+            background: var(--bg2);
+            transition: background 0.15s;
+        }
+        .svc-row:hover { background: var(--bg3); }
+        .svc-row label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            flex: 1;
+            min-width: 0;
+        }
+        .svc-row input[type="checkbox"] {
+            accent-color: var(--accent);
+            width: 14px;
+            height: 14px;
+            cursor: pointer;
+        }
+        .svc-name {
+            font-weight: 500;
+            color: var(--text);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+        .svc-port {
+            color: var(--text2);
+            font-size: 11px;
+            min-width: 60px;
+        }
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        .status-dot.running { background: var(--green); box-shadow: 0 0 6px rgba(63, 185, 80, 0.5); }
+        .status-dot.stopped { background: var(--red); opacity: 0.6; }
+        .svc-status-text {
+            font-size: 11px;
+            min-width: 60px;
+        }
+        .svc-status-text.running { color: var(--green); }
+        .svc-status-text.stopped { color: var(--text2); }
+
+        /* --- Toast --- */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-family: var(--font);
+            z-index: 1000;
+            animation: fadeIn 0.2s ease;
+            max-width: 360px;
+        }
+        .toast.success {
+            background: rgba(63, 185, 80, 0.15);
+            border: 1px solid rgba(63, 185, 80, 0.3);
+            color: var(--green);
+        }
+        .toast.error {
+            background: rgba(248, 81, 73, 0.15);
+            border: 1px solid rgba(248, 81, 73, 0.3);
+            color: var(--red);
+        }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* --- Responsive --- */
+        @media (max-width: 768px) {
+            .topbar { padding: 8px 12px; gap: 8px; flex-wrap: wrap; }
+            .topbar-title { font-size: 12px; }
+            .content { padding: 16px 12px; }
+            .search-input { max-width: none; }
+            th, td { padding: 8px 8px; font-size: 11px; }
+            .actions-cell { gap: 4px; }
+            .btn-sm { font-size: 9px; padding: 2px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Topbar -->
+    <div class="topbar">
+        <span class="topbar-title">AI Workflow — <span data-i18n="admin.title">Admin Panel</span></span>
+        <span class="topbar-spacer"></span>
+        <div class="lang-toggle">
+            <button class="lang-btn" data-lang="uk" onclick="switchLang('uk')">UK</button>
+            <button class="lang-btn" data-lang="en" onclick="switchLang('en')">EN</button>
+        </div>
+        <a href="/" class="topbar-link" data-i18n="admin.back">&larr; Back to Dashboard</a>
+        <button class="btn-logout" data-i18n="topbar.logout" onclick="Auth.logout()">Logout</button>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+        <!-- Tabs -->
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="users" onclick="switchTab('users')" data-i18n="admin.users">Users</button>
+            <button class="tab-btn" data-tab="services" onclick="switchTab('services')" data-i18n="admin.services">Services</button>
+        </div>
+
+        <!-- Users Tab -->
+        <div class="tab-panel active" id="panel-users">
+            <div class="search-row">
+                <input type="text" class="search-input" id="user-search"
+                       data-i18n-placeholder="admin.search" placeholder="Search..."
+                       oninput="debounceSearch()">
+            </div>
+            <div id="users-content">
+                <div class="loading-state"><span class="spinner"></span> <span data-i18n="common.loading">Loading...</span></div>
+            </div>
+            <div class="pagination" id="users-pagination" style="display:none">
+                <span class="pagination-info" id="pagination-info"></span>
+                <div class="pagination-btns">
+                    <button class="btn-page" id="btn-prev" onclick="prevPage()" data-i18n="admin.prev">&larr; Previous</button>
+                    <button class="btn-page" id="btn-next" onclick="nextPage()" data-i18n="admin.next">Next &rarr;</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Services Tab -->
+        <div class="tab-panel" id="panel-services">
+            <div class="services-toolbar">
+                <button class="btn-action start" onclick="startSelected()" id="btn-start-sel" data-i18n="admin.start_selected">Start Selected</button>
+                <button class="btn-action stop" onclick="stopSelected()" id="btn-stop-sel" data-i18n="admin.stop_selected">Stop Selected</button>
+            </div>
+            <div id="services-content">
+                <div class="loading-state"><span class="spinner"></span> <span data-i18n="common.loading">Loading...</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="/static/js/utils/dom.js"></script>
+    <script src="/static/js/core/api.js"></script>
+    <script src="/static/js/core/auth.js"></script>
+    <script src="/static/js/core/i18n.js"></script>
+    <script>
+    /* ==============================
+       State
+    ============================== */
+    let currentUser = null;
+    let usersData = [];
+    let usersTotal = 0;
+    let usersOffset = 0;
+    const USERS_LIMIT = 20;
+    let searchTimeout = null;
+    let openResetPwUserId = null;
+    let openProjectsUserId = null;
+
+    /* ==============================
+       Init
+    ============================== */
+    async function init() {
+        currentUser = await Auth.requireSuperadmin();
+        if (!currentUser) return;
+
+        const lang = Auth.getUserLang();
+        await i18n.load(lang);
+        i18n.apply();
+        updateLangToggle(lang);
+
+        await loadUsers();
+    }
+
+    /* ==============================
+       Language
+    ============================== */
+    function switchLang(lang) {
+        i18n.setLang(lang);
+        updateLangToggle(lang);
+        // Re-render dynamic content with new language
+        renderUsersTable();
+        if (document.getElementById('panel-services').classList.contains('active')) {
+            loadServices();
+        }
+    }
+
+    function updateLangToggle(lang) {
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-lang') === lang);
+        });
+    }
+
+    /* ==============================
+       Tabs
+    ============================== */
+    function switchTab(tab) {
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-tab') === tab);
+        });
+        document.querySelectorAll('.tab-panel').forEach(panel => {
+            panel.classList.toggle('active', panel.id === 'panel-' + tab);
+        });
+        if (tab === 'services') {
+            loadServices();
+        }
+    }
+
+    /* ==============================
+       Toast
+    ============================== */
+    function showToast(message, type) {
+        const existing = document.querySelector('.toast');
+        if (existing) existing.remove();
+
+        const toast = document.createElement('div');
+        toast.className = 'toast ' + type;
+        toast.textContent = message;
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+    }
+
+    /* ==============================
+       Users — Load & Render
+    ============================== */
+    async function loadUsers() {
+        const search = document.getElementById('user-search').value.trim();
+        const params = new URLSearchParams({
+            offset: usersOffset,
+            limit: USERS_LIMIT,
+            include_projects: 'true',
+        });
+        if (search) params.set('search', search);
+
+        try {
+            const data = await API.get('/api/admin/users?' + params.toString());
+            usersData = data.users;
+            usersTotal = data.total;
+            renderUsersTable();
+        } catch (e) {
+            document.getElementById('users-content').innerHTML =
+                '<div class="no-data">' + escapeHtml(i18n.t('common.error')) + '</div>';
+        }
+    }
+
+    function renderUsersTable() {
+        const container = document.getElementById('users-content');
+        const pagination = document.getElementById('users-pagination');
+
+        if (!usersData.length) {
+            container.innerHTML = '<div class="no-data">' + escapeHtml(i18n.t('admin.no_users')) + '</div>';
+            pagination.style.display = 'none';
+            return;
+        }
+
+        let html = '<div class="table-wrap"><table><thead><tr>';
+        html += '<th>' + escapeHtml(i18n.t('admin.email')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.display_name')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.role')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.status')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.projects')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.created')) + '</th>';
+        html += '<th>' + escapeHtml(i18n.t('admin.actions')) + '</th>';
+        html += '</tr></thead><tbody>';
+
+        for (const u of usersData) {
+            const isSelf = u.id === currentUser.id;
+            const roleBadge = u.is_superadmin
+                ? '<span class="badge badge-admin">' + escapeHtml(i18n.t('admin.superadmin')) + '</span>'
+                : '<span class="badge badge-user">' + escapeHtml(i18n.t('admin.user')) + '</span>';
+            const statusBadge = u.is_blocked
+                ? '<span class="badge badge-blocked">' + escapeHtml(i18n.t('admin.blocked')) + '</span>'
+                : '<span class="badge badge-active">' + escapeHtml(i18n.t('admin.active')) + '</span>';
+            const youBadge = isSelf
+                ? ' <span class="badge badge-you">' + escapeHtml(i18n.t('admin.you')) + '</span>'
+                : '';
+            const created = u.created_at ? formatDate(u.created_at) : '—';
+            const projects = u.projects || [];
+            const projectsCell = projects.length === 0
+                ? '<span style="color:var(--text2);font-size:11px">—</span>'
+                : '<button class="projects-toggle" onclick="toggleProjects(\'' + escapeHtml(u.id) + '\')">'
+                  + projects.length + ' ' + escapeHtml(i18n.t(projects.length === 1 ? 'admin.project_one' : 'admin.project_many'))
+                  + '</button>';
+
+            html += '<tr>';
+            html += '<td>' + escapeHtml(u.email) + youBadge + '</td>';
+            html += '<td>' + escapeHtml(u.display_name || '') + '</td>';
+            html += '<td>' + roleBadge + '</td>';
+            html += '<td>' + statusBadge + '</td>';
+            html += '<td>' + projectsCell + '</td>';
+            html += '<td style="white-space:nowrap;color:var(--text2);font-size:11px">' + escapeHtml(created) + '</td>';
+            html += '<td>' + renderActions(u, isSelf) + '</td>';
+            html += '</tr>';
+
+            // Inline expanded row with project chips. Superadmin only sees the
+            // FACT (name + visibility + role) — no link, no content access.
+            if (openProjectsUserId === u.id && projects.length > 0) {
+                html += '<tr class="projects-row"><td colspan="7"><div class="project-chips">';
+                for (const p of projects) {
+                    const isPriv = p.visibility === 'private';
+                    const cls = isPriv ? 'private' : 'public';
+                    const icon = isPriv ? '🔒' : '🌐';
+                    html += '<span class="project-chip ' + cls + '">'
+                          + '<span class="project-chip-icon">' + icon + '</span>'
+                          + escapeHtml(p.name || p.slug)
+                          + ' <span class="project-chip-role">(' + escapeHtml(p.role) + ')</span>'
+                          + '</span>';
+                }
+                html += '</div></td></tr>';
+            }
+        }
+
+        html += '</tbody></table></div>';
+        container.innerHTML = html;
+
+        // Pagination
+        const from = usersTotal > 0 ? usersOffset + 1 : 0;
+        const to = Math.min(usersOffset + USERS_LIMIT, usersTotal);
+        document.getElementById('pagination-info').textContent = i18n.t('admin.page_info', { from, to, total: usersTotal });
+        document.getElementById('btn-prev').disabled = usersOffset === 0;
+        document.getElementById('btn-next').disabled = usersOffset + USERS_LIMIT >= usersTotal;
+        pagination.style.display = usersTotal > 0 ? 'flex' : 'none';
+    }
+
+    function renderActions(user, isSelf) {
+        const uid = escapeHtml(user.id);
+
+        if (isSelf) {
+            return '<span style="color:var(--text2);font-size:11px">—</span>';
+        }
+
+        let html = '<div class="actions-cell">';
+
+        // Block / Unblock
+        if (user.is_blocked) {
+            html += '<button class="btn-sm success" onclick="toggleBlock(\'' + uid + '\')">'
+                  + escapeHtml(i18n.t('admin.unblock')) + '</button>';
+        } else {
+            html += '<button class="btn-sm danger" onclick="toggleBlock(\'' + uid + '\')">'
+                  + escapeHtml(i18n.t('admin.block')) + '</button>';
+        }
+
+        // Delete
+        html += '<button class="btn-sm danger" onclick="deleteUser(\'' + uid + '\', \'' + escapeHtml(user.email).replace(/'/g, "\\'") + '\')">'
+              + escapeHtml(i18n.t('admin.delete')) + '</button>';
+
+        // Reset password
+        html += '<button class="btn-sm" onclick="toggleResetPw(\'' + uid + '\')">'
+              + escapeHtml(i18n.t('admin.reset_password')) + '</button>';
+
+        // Make admin / Revoke admin
+        if (user.is_superadmin) {
+            html += '<button class="btn-sm danger" onclick="toggleAdmin(\'' + uid + '\', false)">'
+                  + escapeHtml(i18n.t('admin.revoke_admin')) + '</button>';
+        } else {
+            html += '<button class="btn-sm success" onclick="toggleAdmin(\'' + uid + '\', true)">'
+                  + escapeHtml(i18n.t('admin.make_admin')) + '</button>';
+        }
+
+        html += '</div>';
+
+        // Reset password inline form
+        if (openResetPwUserId === user.id) {
+            html += '<div class="reset-pw-form" id="reset-pw-' + uid + '">'
+                  + '<input type="password" id="pw-input-' + uid + '" placeholder="' + escapeHtml(i18n.t('admin.new_password')) + '" minlength="8">'
+                  + '<button class="btn-sm success" onclick="submitResetPw(\'' + uid + '\')">'
+                  + escapeHtml(i18n.t('admin.set_password')) + '</button>'
+                  + '<button class="btn-sm" onclick="cancelResetPw()">'
+                  + escapeHtml(i18n.t('common.cancel')) + '</button>'
+                  + '</div>';
+        }
+
+        return html;
+    }
+
+    /* ==============================
+       Users — Actions
+    ============================== */
+    async function toggleBlock(userId) {
+        try {
+            await API.post('/api/admin/users/' + userId + '/block');
+            await loadUsers();
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        }
+    }
+
+    async function deleteUser(userId, email) {
+        const msg = i18n.t('admin.confirm_delete', { email });
+        if (!confirm(msg)) return;
+
+        try {
+            await API.del('/api/admin/users/' + userId);
+            // Reset to first page if current list will be empty
+            if (usersData.length === 1 && usersOffset > 0) {
+                usersOffset = Math.max(0, usersOffset - USERS_LIMIT);
+            }
+            await loadUsers();
+            showToast(i18n.t('admin.delete') + ' OK', 'success');
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        }
+    }
+
+    function toggleProjects(userId) {
+        openProjectsUserId = openProjectsUserId === userId ? null : userId;
+        renderUsersTable();
+    }
+
+    function toggleResetPw(userId) {
+        openResetPwUserId = openResetPwUserId === userId ? null : userId;
+        renderUsersTable();
+        // Focus input after render
+        if (openResetPwUserId) {
+            const inp = document.getElementById('pw-input-' + userId);
+            if (inp) inp.focus();
+        }
+    }
+
+    function cancelResetPw() {
+        openResetPwUserId = null;
+        renderUsersTable();
+    }
+
+    async function submitResetPw(userId) {
+        const input = document.getElementById('pw-input-' + userId);
+        if (!input) return;
+        const newPassword = input.value;
+        if (!newPassword || newPassword.length < 8) {
+            showToast(i18n.t('admin.new_password') + ': min 8', 'error');
+            return;
+        }
+        try {
+            await API.post('/api/admin/users/' + userId + '/reset-password', { new_password: newPassword });
+            openResetPwUserId = null;
+            await loadUsers();
+            showToast(i18n.t('admin.reset_password') + ' OK', 'success');
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        }
+    }
+
+    async function toggleAdmin(userId, grant) {
+        try {
+            await API.post('/api/admin/users/' + userId + '/superadmin', { grant });
+            await loadUsers();
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        }
+    }
+
+    /* ==============================
+       Users — Search & Pagination
+    ============================== */
+    function debounceSearch() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            usersOffset = 0;
+            loadUsers();
+        }, 300);
+    }
+
+    function prevPage() {
+        if (usersOffset > 0) {
+            usersOffset = Math.max(0, usersOffset - USERS_LIMIT);
+            loadUsers();
+        }
+    }
+
+    function nextPage() {
+        if (usersOffset + USERS_LIMIT < usersTotal) {
+            usersOffset += USERS_LIMIT;
+            loadUsers();
+        }
+    }
+
+    /* ==============================
+       Users — Helpers
+    ============================== */
+    function formatDate(isoStr) {
+        try {
+            const d = new Date(isoStr);
+            return d.toLocaleDateString() + ' ' + d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch {
+            return isoStr;
+        }
+    }
+
+    /* ==============================
+       Services — Load & Render
+    ============================== */
+    async function loadServices() {
+        const container = document.getElementById('services-content');
+        container.innerHTML = '<div class="loading-state"><span class="spinner"></span> ' + escapeHtml(i18n.t('common.loading')) + '</div>';
+
+        try {
+            const groups = await API.get('/api/services');
+            renderServices(groups);
+        } catch (e) {
+            container.innerHTML = '<div class="no-data">' + escapeHtml(i18n.t('common.error')) + '</div>';
+        }
+    }
+
+    function renderServices(groups) {
+        const container = document.getElementById('services-content');
+
+        if (!groups || !groups.length) {
+            container.innerHTML = '<div class="no-data">' + escapeHtml(i18n.t('common.no_data')) + '</div>';
+            return;
+        }
+
+        let html = '';
+
+        for (const group of groups) {
+            html += '<div class="svc-group-title">' + escapeHtml(group.group) + '</div>';
+
+            for (const svc of group.services) {
+                const running = svc.running;
+                const statusClass = running ? 'running' : 'stopped';
+                const statusText = running
+                    ? i18n.t('admin.service_running')
+                    : i18n.t('admin.service_stopped');
+                const name = escapeHtml(svc.name);
+                const port = svc.port ? escapeHtml(String(svc.port)) : '—';
+
+                html += '<div class="svc-row">';
+                html += '<label>';
+                html += '<input type="checkbox" class="svc-checkbox" value="' + name + '">';
+                html += '<span class="svc-name">' + name + '</span>';
+                html += '</label>';
+                html += '<span class="svc-port">:' + port + '</span>';
+                html += '<span class="status-dot ' + statusClass + '"></span>';
+                html += '<span class="svc-status-text ' + statusClass + '">' + escapeHtml(statusText) + '</span>';
+                html += '</div>';
+            }
+        }
+
+        container.innerHTML = html;
+    }
+
+    function getSelectedServices() {
+        const checked = document.querySelectorAll('.svc-checkbox:checked');
+        return Array.from(checked).map(cb => cb.value);
+    }
+
+    async function startSelected() {
+        const names = getSelectedServices();
+        if (!names.length) return;
+
+        const btn = document.getElementById('btn-start-sel');
+        btn.disabled = true;
+        try {
+            await API.post('/api/services/start', { names });
+            showToast(i18n.t('services.start') + ' OK', 'success');
+            // Reload after brief delay to let services start
+            setTimeout(() => loadServices(), 1500);
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function stopSelected() {
+        const names = getSelectedServices();
+        if (!names.length) return;
+
+        const btn = document.getElementById('btn-stop-sel');
+        btn.disabled = true;
+        try {
+            await API.post('/api/services/stop', { names });
+            showToast(i18n.t('services.stop') + ' OK', 'success');
+            setTimeout(() => loadServices(), 1000);
+        } catch (e) {
+            showToast(i18n.t('common.error'), 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    /* ==============================
+       Boot
+    ============================== */
+    init();
+    </script>
+</body>
+</html>

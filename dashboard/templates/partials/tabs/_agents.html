@@ -1,0 +1,137 @@
+{# Agents tab — server-rendered with HTMX interactions #}
+<div id="tab-agents" x-data="{ skillsOpen: false }">
+
+  {# Skills panel #}
+  {% set skills = agents_data.skills if agents_data else [] %}
+  <div class="skills-panel" id="skills-panel">
+    <div class="skills-header" @click="skillsOpen = !skillsOpen">
+      <h3>Tessl Skills</h3>
+      <span class="skills-count">{{ skills|length }} skills</span>
+    </div>
+    <div class="skills-body" x-show="skillsOpen" x-cloak>
+      {% set ns = namespace(current_group='') %}
+      {% set agent_labels = {'global': t('agents.source_global', lang), 'pm': 'PM', 'ba': 'BA', 'backend': 'Backend (DEV)', 'frontend': 'Frontend (DEV)', 'qa': 'QA'} %}
+      {% set badge_class = {'global': 'b-global', 'pm': 'b-pm', 'ba': 'b-ba', 'backend': 'b-backend', 'frontend': 'b-frontend', 'qa': 'b-qa'} %}
+
+      {# Group skills by agent #}
+      {% set grouped = {} %}
+      {% for s in skills %}
+        {% set group = s.agent or 'other' %}
+        {% if group not in grouped %}
+          {% set _ = grouped.update({group: []}) %}
+        {% endif %}
+        {% set _ = grouped[group].append(s) %}
+      {% endfor %}
+
+      {% for group, items in grouped.items() %}
+      <div class="skills-group">
+        <div class="skills-group-label">{{ agent_labels.get(group, group) }}</div>
+        {% for s in items %}
+        <div class="skill-row">
+          <span class="skill-dot {{ 'active' if s.installed else 'inactive' }}"></span>
+          <span class="skill-name">{{ s.name }}</span>
+          <span class="skill-source">{{ s.source }}</span>
+          <span class="skill-agent-badge {{ badge_class.get(group, '') }}">{{ (agent_labels.get(group, group)).split(' ')[0] }}</span>
+        </div>
+        {% endfor %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  {# Agent list + editor grid #}
+  {% set data = agents_data if agents_data else {} %}
+  {% set agents_map = data.get('agents_map', {}) if data else {} %}
+  {% set dev_agents = data.get('dev_agents', []) if data else [] %}
+  {% set agent_labels_map = data.get('agent_labels', {}) if data else {} %}
+  {% set discovery_stages = data.get('discovery_stages', []) if data else [] %}
+  {% set first_agent = data.get('first_agent', '') if data else '' %}
+
+  <div class="agents-grid">
+    <div class="agents-list" id="agents-list">
+      {# Dev pipeline agents #}
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:4px 12px;margin-bottom:2px">Dev Pipeline</div>
+      {% for agent_name in dev_agents %}
+        {% set info = agents_map.get(agent_name, {}) %}
+        {% set src = info.get('source', 'default') if info else 'default' %}
+        {% set dot = '&#9679;' if src == 'project' else '&#9675;' %}
+        {% set label = agent_labels_map.get(agent_name, agent_name) %}
+        <button class="agent-btn {% if agent_name == first_agent %}active{% endif %}"
+                data-agent="{{ agent_name }}"
+                hx-get="/ui/partials/agent-editor/{{ agent_name }}?project={{ project }}"
+                hx-target="#agent-editor-area"
+                hx-swap="innerHTML"
+                onclick="document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('active')); this.classList.add('active')">
+          {{ dot|safe }} {{ label }}
+        </button>
+      {% endfor %}
+
+      {# Discovery agents #}
+      {% if discovery_stages %}
+      <div style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;padding:4px 12px;margin-top:12px;margin-bottom:2px">Discovery</div>
+      {% for stage in discovery_stages %}
+        {% set agent_name = stage.agent if stage.agent else 'discovery-' ~ stage.name %}
+        {% set info = agents_map.get(agent_name, {}) %}
+        {% set src = info.get('source', 'default') if info else 'default' %}
+        {% set dot = '&#9679;' if src == 'project' else '&#9675;' %}
+        <button class="agent-btn"
+                data-agent="{{ agent_name }}"
+                hx-get="/ui/partials/agent-editor/{{ agent_name }}?project={{ project }}"
+                hx-target="#agent-editor-area"
+                hx-swap="innerHTML"
+                onclick="document.querySelectorAll('.agent-btn').forEach(b => b.classList.remove('active')); this.classList.add('active')">
+          {{ dot|safe }} {{ stage.name }}
+        </button>
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    <div class="editor-area" id="agent-editor-area">
+      {# Load first agent's editor by default #}
+      {% if first_agent %}
+      <div hx-get="/ui/partials/agent-editor/{{ first_agent }}?project={{ project }}"
+           hx-trigger="load"
+           hx-swap="innerHTML"
+           hx-target="#agent-editor-area">
+        <div style="color:var(--text-muted);font-size:11px;padding:16px">{{ t('common.loading', lang) }}</div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<script>
+{# Minimal JS for save/reset — sends requests via fetch, then reloads via HTMX #}
+async function saveAgentInstructions(agentName, project) {
+  const textarea = document.getElementById('agent-editor-textarea');
+  if (!textarea) return;
+  try {
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/agents/${encodeURIComponent(agentName)}`, {
+      method: 'PUT',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ content: textarea.value })
+    });
+    if (res.ok) {
+      {# Reload the agents tab to reflect source change in sidebar #}
+      htmx.ajax('GET', '/ui/partials/tabs/agents?project=' + encodeURIComponent(project), '#tab-content');
+    }
+  } catch (e) {
+    console.error('saveAgentInstructions:', e);
+  }
+}
+
+async function resetAgentInstructions(agentName, project) {
+  if (!confirm('{{ t("agents.reset", lang) }} ' + agentName + '?')) return;
+  try {
+    const res = await fetch(`/api/projects/${encodeURIComponent(project)}/agents/${encodeURIComponent(agentName)}`, {
+      method: 'DELETE'
+    });
+    if (res.ok) {
+      {# Reload the whole agents tab to update sidebar dots + editor #}
+      htmx.ajax('GET', '/ui/partials/tabs/agents?project=' + encodeURIComponent(project), '#tab-content');
+    }
+  } catch (e) {
+    console.error('resetAgentInstructions:', e);
+  }
+}
+</script>

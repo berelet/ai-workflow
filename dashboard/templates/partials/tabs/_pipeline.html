@@ -1,0 +1,78 @@
+<div id="tab-pipeline">
+  <div class="pipeline-layout">
+    <div class="pipeline-sidebar">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);">Pipelines</span>
+        {% if user_role in ('editor', 'owner') or is_superadmin %}
+        <button onclick="createNewPipeline()" style="background:transparent;border:none;color:var(--accent);cursor:pointer;font-size:16px;line-height:1;">+</button>
+        {% endif %}
+      </div>
+      <div id="pl-list" style="display:flex;flex-direction:column;gap:6px;flex:1;overflow-y:auto;"></div>
+    </div>
+    <div class="pipeline-canvas-area">
+      {% if user_role in ('editor', 'owner') or is_superadmin %}
+      <div class="pl-node-palette">
+        <span style="font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);margin-right:8px;">Drag to Canvas:</span>
+        <div class="pl-palette-group">
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="PM">PM <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="BA">BA <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="ARCH">ARCH <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="DESIGN">DESIGN <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="DEV">DEV <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="QA">QA <span class="badge">Agent</span></div>
+          <div class="pl-palette-btn" draggable="true" ondragstart="plDrag(event)" data-node="COMMIT">COMMIT <span class="badge">Agent</span></div>
+        </div>
+        <div class="pl-palette-divider"></div>
+        <div class="pl-palette-group">
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="PM_REVIEW">PM Review <span class="badge">Reviewer</span></div>
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="BA_REVIEW">BA Review <span class="badge">Reviewer</span></div>
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="ARCH_REVIEW">ARCH Review <span class="badge">Reviewer</span></div>
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="DEV_REVIEW">DEV Review <span class="badge">Reviewer</span></div>
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="QA_REVIEW">QA Review <span class="badge">Reviewer</span></div>
+          <div class="pl-palette-btn reviewer" draggable="true" ondragstart="plDrag(event)" data-node="PERF">PERF Review <span class="badge">Reviewer</span></div>
+        </div>
+      </div>
+      {% endif %}
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <input id="pl-name-input" {% if user_role in ('editor', 'owner') or is_superadmin %}onblur="saveCurrentPipeline()"{% else %}readonly{% endif %} style="background:transparent;border:none;border-bottom:1px dashed var(--border);color:var(--text-primary);font-family:var(--font);font-size:16px;outline:none;padding:4px 0;">
+          <span id="pl-save-status" style="font-size:11px;color:var(--text-muted);">Saved</span>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <button onclick="editor.zoom_out()" style="padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">&#8722;</button>
+          <span id="pl-zoom-level" style="font-size:10px;color:var(--text-muted);min-width:40px;text-align:center;">100%</span>
+          <button onclick="editor.zoom_in()" style="padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:12px;">+</button>
+          <button onclick="editor.zoom_reset()" style="padding:4px 10px;border:1px solid var(--border);background:transparent;color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:10px;margin-left:8px;">Reset</button>
+          <button onclick="editor.fitToContent()" style="padding:4px 10px;border:1px solid var(--accent);background:transparent;color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:10px;">{{ t('pipeline.fit', lang) }}</button>
+          {% if user_role in ('editor', 'owner') or is_superadmin %}
+          <button id="pl-clear-btn" onclick="editor.clearModuleSelected()" style="padding:6px 12px;border:1px solid var(--border);background:transparent;color:var(--text-muted);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;">{{ t('pipeline.clear', lang) }}</button>
+          <button id="pl-save-btn" onclick="saveCurrentPipeline()" style="padding:6px 16px;border:1px solid var(--accent);background:transparent;color:var(--text-primary);border-radius:var(--radius-sm);cursor:pointer;font-size:11px;">{{ t('pipeline.save', lang) }}</button>
+          {% endif %}
+        </div>
+      </div>
+      <div id="drawflow" style="width:100%;height:700px;position:relative;" ondrop="plDrop(event)" ondragover="event.preventDefault()"></div>
+    </div>
+    <div id="node-config-overlay" onclick="closeNodeConfig()"></div>
+    <div id="node-config-panel">
+      <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--border);padding-bottom:8px;">
+        <span style="font-size:12px;font-weight:500;color:var(--text-primary);" id="cfg-node-title">Node Config</span>
+        <button onclick="closeNodeConfig()" style="background:none;border:none;color:var(--text-muted);cursor:pointer;">&times;</button>
+      </div>
+      <div id="cfg-agent-type-badge" style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px;"></div>
+      <div id="cfg-skills-section" class="hidden" style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:8px;">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px;">Attached Skills:</div>
+        <div id="cfg-skills-list" style="display:flex;flex-direction:column;gap:4px;"></div>
+      </div>
+      <div id="cfg-prompt-section" class="hidden" style="display:flex;flex-direction:column;gap:8px;flex:1;">
+        <div style="font-size:11px;color:var(--text-secondary);">Custom Prompt:</div>
+        <textarea id="cfg-prompt-input" style="flex:1;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text-primary);padding:8px;font-family:var(--font);font-size:11px;resize:none;outline:none;"></textarea>
+      </div>
+      {% if user_role in ('editor', 'owner') or is_superadmin %}
+      <button onclick="saveNodeConfig()" style="padding:8px;width:100%;border:1px solid var(--accent);background:var(--accent);color:var(--bg-primary);border-radius:var(--radius-sm);cursor:pointer;font-family:var(--font);font-weight:500;margin-top:auto;">{{ t('pipeline.apply_to_node', lang) }}</button>
+      {% endif %}
+    </div>
+  </div>
+</div>
+<script>
+if (typeof loadPipelinesList === 'function') loadPipelinesList();
+</script>

@@ -1,0 +1,46 @@
+{# Artifacts tab — server-rendered with HTMX interactions #}
+<div id="tab-artifacts">
+  {% set items = artifacts_data['items'] if artifacts_data else [] %}
+
+  <div class="artifacts-grid">
+    {# Sidebar: task groups with file buttons #}
+    <div class="artifact-list" id="artifact-list">
+      {% if not items %}
+      <div style="color:var(--text-muted);font-size:11px;padding:8px">{{ t('artifacts.empty', lang) }}</div>
+      {% else %}
+      {% for task in items %}
+      <div class="artifact-agent-header">#{{ task.task_id }} {{ task.task_name }}</div>
+
+      {# Document artifacts #}
+      {% for f in task.doc_files %}
+      <button class="artifact-btn"
+              data-task="{{ task.task_id }}"
+              hx-get="/ui/partials/artifact-view/{{ task.task_id }}/{{ f.name }}?project={{ project }}"
+              hx-target="#artifact-content-area"
+              hx-swap="innerHTML"
+              onclick="document.querySelectorAll('.artifact-btn').forEach(b => b.classList.remove('active')); this.classList.add('active')">
+        {{ f.name }}
+      </button>
+      {% endfor %}
+
+      {# Code changes button #}
+      {% if task.has_code_changes %}
+      <button class="artifact-btn"
+              data-task="{{ task.task_id }}"
+              hx-get="/ui/partials/code-changes/{{ task.task_id }}?project={{ project }}"
+              hx-target="#artifact-content-area"
+              hx-swap="innerHTML"
+              onclick="document.querySelectorAll('.artifact-btn').forEach(b => b.classList.remove('active')); this.classList.add('active')">
+        code-changes ({{ task.code_files_count }} files)
+      </button>
+      {% endif %}
+      {% endfor %}
+      {% endif %}
+    </div>
+
+    {# Content area — populated via HTMX #}
+    <div id="artifact-content-area" style="display:flex;flex-direction:column;gap:12px;overflow-y:auto">
+      <div class="artifact-view" style="flex:1">{{ t('artifacts.empty', lang) }}</div>
+    </div>
+  </div>
+</div>

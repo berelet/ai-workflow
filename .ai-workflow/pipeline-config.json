@@ -1,0 +1,38 @@
+{
+  "stages": [
+    "PM",
+    "PM_REVIEW",
+    "BA",
+    "BA_REVIEW",
+    "DESIGN",
+    "DEV",
+    "DEV_REVIEW",
+    "QA",
+    "QA_REVIEW",
+    "PERF",
+    "COMMIT"
+  ],
+  "discovery_stages": [
+    {
+      "name": "interview",
+      "agent": "discovery-interview",
+      "description": "Задать уточняющие вопросы по проекту"
+    },
+    {
+      "name": "analysis",
+      "agent": "discovery-analysis",
+      "description": "Определить стек и архитектуру"
+    },
+    {
+      "name": "decomposition",
+      "agent": "discovery-decomposition",
+      "description": "Декомпозировать на задачи"
+    },
+    {
+      "name": "confirmation",
+      "agent": "discovery-confirmation",
+      "description": "Показать результат и получить подтверждение"
+    }
+  ],
+  "project_dir": "/var/www/ai-workflow"
+}

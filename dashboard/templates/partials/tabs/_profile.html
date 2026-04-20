@@ -1,0 +1,202 @@
+<div id="tab-profile" x-data="profileTab()">
+  <div style="max-width:480px;margin:40px auto 0">
+    <h2 style="font-size:16px;font-weight:500;margin-bottom:24px">{{ t('profile.title', lang) }}</h2>
+
+    <div style="margin-bottom:24px">
+      <label class="modal-label">{{ t('auth.display_name', lang) }}</label>
+      <input x-model="displayName" class="np-input">
+      <label class="modal-label">{{ t('auth.email', lang) }}</label>
+      <input :value="email" class="np-input" disabled>
+    </div>
+
+    <div style="margin-bottom:24px">
+      <h3 style="font-size:13px;margin-bottom:12px">{{ t('profile.change_password', lang) }}</h3>
+      <label class="modal-label">{{ t('profile.current_password', lang) }}</label>
+      <input x-model="curPw" type="password" class="np-input">
+      <label class="modal-label">{{ t('profile.new_password', lang) }}</label>
+      <input x-model="newPw" type="password" class="np-input">
+      <label class="modal-label">{{ t('profile.confirm_password', lang) }}</label>
+      <input x-model="confirmPw" type="password" class="np-input">
+    </div>
+
+    <div x-show="msg" x-text="msg" :class="msgClass" style="font-size:12px;margin-bottom:12px"></div>
+
+    <button @click="save()" class="btn btn-primary">{{ t('common.save', lang) }}</button>
+
+    <!-- SSH Keys section -->
+    <div style="margin-top:32px;border-top:1px solid var(--border);padding-top:20px">
+      <h3 style="font-size:13px;margin-bottom:12px">{{ t('profile.ssh_keys', lang) }}</h3>
+      <p style="font-size:11px;color:var(--text-muted);margin-bottom:12px">{{ t('profile.ssh_keys_hint', lang) }}</p>
+
+      <template x-if="loadingKeys">
+        <p style="font-size:12px;color:var(--text-muted)">{{ t('common.loading', lang) }}</p>
+      </template>
+
+      <template x-if="!loadingKeys && sshKeys.length === 0">
+        <p style="font-size:12px;color:var(--text-muted)">{{ t('profile.no_ssh_keys', lang) }}</p>
+      </template>
+
+      <template x-for="k in sshKeys" :key="k.id">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);margin-bottom:6px">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:12px;color:var(--text-primary)" x-text="k.label"></div>
+            <div style="font-size:10px;color:var(--text-muted);font-family:monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="k.fingerprint"></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-left:8px">
+            <button @click="viewPublicKey(k.id)" type="button" style="padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:11px;cursor:pointer">{{ t('profile.show_key', lang) }}</button>
+            <button @click="deleteKey(k.id)" type="button" style="padding:4px 8px;border-radius:var(--radius-sm);border:1px solid var(--color-danger);background:transparent;color:var(--color-danger);font-family:var(--font);font-size:11px;cursor:pointer">{{ t('common.delete', lang) }}</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- Generate / view existing key public output -->
+      <template x-if="viewKeyContent">
+        <div style="margin-top:8px;padding:12px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--bg-primary)">
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">{{ t('profile.public_key', lang) }}</p>
+          <pre style="background:var(--bg-secondary);padding:8px;border-radius:var(--radius-sm);font-size:11px;color:var(--text-primary);overflow-x:auto;white-space:pre-wrap;word-break:break-all" x-text="viewKeyContent"></pre>
+          <div style="display:flex;gap:8px;margin-top:6px">
+            <button @click="copyView()" type="button" style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);font-family:var(--font);font-size:11px;cursor:pointer" x-text="copyText"></button>
+            <button @click="viewKeyContent = ''" type="button" style="padding:4px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:var(--font);font-size:11px;cursor:pointer">{{ t('common.close', lang) }}</button>
+          </div>
+        </div>
+      </template>
+
+      <div style="margin-top:12px">
+        <template x-if="!showGenInput">
+          <button @click="showGenInput = true" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer">+ {{ t('profile.generate_ssh_key', lang) }}</button>
+        </template>
+        <template x-if="showGenInput">
+          <div style="display:flex;gap:6px">
+            <input class="np-input" placeholder="my-laptop" x-model="genLabel" style="flex:1">
+            <button @click="generateKey()" :disabled="generating || !genLabel.trim()" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--accent);background:transparent;color:var(--text-primary);font-family:var(--font);font-size:12px;cursor:pointer" x-text="generating ? '...' : '{{ t('profile.create', lang) }}'"></button>
+            <button @click="showGenInput = false; genLabel = ''" type="button" style="padding:6px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:var(--font);font-size:12px;cursor:pointer">{{ t('common.cancel', lang) }}</button>
+          </div>
+        </template>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function profileTab() {
+  return {
+    displayName: '{{ user.display_name|default("", true)|e }}',
+    email: '{{ user.email|e }}',
+    curPw: '',
+    newPw: '',
+    confirmPw: '',
+    msg: '',
+    msgClass: '',
+    sshKeys: [],
+    loadingKeys: true,
+    showGenInput: false,
+    genLabel: '',
+    generating: false,
+    viewKeyContent: '',
+    copyText: '{{ t("newproject.copy", lang) }}',
+
+    init() {
+      this.loadKeys();
+    },
+
+    async loadKeys() {
+      this.loadingKeys = true;
+      try {
+        const r = await API.get('/api/auth/me/ssh-keys');
+        this.sshKeys = r.keys || [];
+      } catch (e) {
+        this.sshKeys = [];
+      } finally {
+        this.loadingKeys = false;
+      }
+    },
+
+    async generateKey() {
+      if (!this.genLabel.trim()) return;
+      this.generating = true;
+      try {
+        const r = await API.post('/api/auth/me/ssh-keys/generate', { label: this.genLabel.trim() });
+        if (r.key && r.key.public_key) {
+          this.viewKeyContent = r.key.public_key;
+        }
+        this.showGenInput = false;
+        this.genLabel = '';
+        await this.loadKeys();
+      } catch (e) {
+        this.msg = e.detail || e.message || 'Generate failed';
+        this.msgClass = 'msg error';
+      } finally {
+        this.generating = false;
+      }
+    },
+
+    async viewPublicKey(keyId) {
+      try {
+        const r = await API.get('/api/auth/me/ssh-keys/' + encodeURIComponent(keyId) + '/public');
+        this.viewKeyContent = r.public_key || '';
+      } catch (e) {
+        this.msg = e.detail || e.message || 'Cannot fetch public key';
+        this.msgClass = 'msg error';
+      }
+    },
+
+    async deleteKey(keyId) {
+      if (!confirm('{{ t("profile.delete_ssh_key_confirm", lang) }}')) return;
+      try {
+        await API.del('/api/auth/me/ssh-keys/' + encodeURIComponent(keyId));
+        await this.loadKeys();
+        if (this.viewKeyContent) this.viewKeyContent = '';
+      } catch (e) {
+        this.msg = e.detail || e.message || 'Delete failed';
+        this.msgClass = 'msg error';
+      }
+    },
+
+    async copyView() {
+      try {
+        await navigator.clipboard.writeText(this.viewKeyContent);
+        this.copyText = '{{ t("newproject.copied", lang) }}';
+        setTimeout(() => { this.copyText = '{{ t("newproject.copy", lang) }}'; }, 1500);
+      } catch (e) {}
+    },
+
+    async save() {
+      this.msg = '';
+      try {
+        // Update display name
+        if (this.displayName) {
+          await API.put('/api/auth/me', { display_name: this.displayName });
+        }
+        // Change password if filled
+        if (this.newPw) {
+          if (this.newPw !== this.confirmPw) {
+            this.msg = t('auth.passwords_mismatch');
+            this.msgClass = 'msg error';
+            return;
+          }
+          if (this.newPw.length < 8) {
+            this.msg = t('auth.password_too_short');
+            this.msgClass = 'msg error';
+            return;
+          }
+          await API.put('/api/auth/me', {
+            current_password: this.curPw,
+            new_password: this.newPw,
+          });
+        }
+        this.msg = 'OK';
+        this.msgClass = 'msg success';
+        this.curPw = '';
+        this.newPw = '';
+        this.confirmPw = '';
+        // Update profile button label
+        const btn = document.getElementById('profile-btn-label');
+        if (btn) btn.textContent = this.displayName || this.email;
+      } catch (e) {
+        this.msg = e.detail || e.message;
+        this.msgClass = 'msg error';
+      }
+    }
+  };
+}
+</script>

@@ -1,0 +1,53 @@
+<div id="tab-backlog">
+  {% if user_role in ('editor', 'owner') or is_superadmin %}
+  <button class="add-task-btn" onclick="openAddModal('backlog')">+ {{ t('backlog.add_task', lang) }}</button>
+  {% endif %}
+
+  <div id="backlog-pool">
+    {% set items = backlog_items|selectattr('status', 'equalto', 'backlog')|list %}
+    {% if not items %}
+    <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:40px">{{ t('backlog.empty', lang) }}</div>
+    {% else %}
+    {% for i in items %}
+    {% set task_name = i.task or i.title or '' %}
+    {% set art_count = artifact_counts.get(i.id|string, 0) %}
+    <div class="backlog-card p-{{ i.priority|default('medium') }}" onclick="openEditModal('{{ i.id }}')">
+      <div class="card-header">
+        <span class="card-id">#{{ i.id }}</span>
+        <span class="badge-priority badge-{{ i.priority|default('medium') }}">{{ i.priority|default('medium') }}</span>
+      </div>
+      <div class="card-title">{{ task_name }}</div>
+      {% if i.description %}
+      <div class="card-desc">{{ i.description[:100] }}{% if i.description|length > 100 %}...{% endif %}</div>
+      {% endif %}
+      {% if i.images %}
+      <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+        {% for img in i.images %}
+        {% set url = img if img is string else img.url %}
+        <img src="{{ url }}" style="width:40px;height:40px;object-fit:cover;border-radius:2px;border:1px solid var(--border);cursor:pointer" onclick="event.stopPropagation();openImageModal('{{ url }}')">
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="card-footer">
+        <div>
+          {% if art_count %}
+          <a class="artifact-badge" href="/artifacts/{{ project }}/{{ i.id }}" target="_blank" onclick="event.stopPropagation()" title="{{ t('board.artifacts', lang) }}">{{ art_count }} art.</a>
+          {% endif %}
+        </div>
+        {% if user_role in ('editor', 'owner') or is_superadmin %}
+        <div class="card-actions">
+          <button class="btn-todo"
+                  hx-post="/ui/actions/move-to-todo?project={{ project }}&item_id={{ i.id }}"
+                  hx-target="#tab-content"
+                  hx-swap="innerHTML"
+                  onclick="event.stopPropagation()"
+                  title="{{ t('backlog.move_to_todo', lang) }}">&#8594; todo</button>
+          <button class="btn-del" onclick="event.stopPropagation();delTask('{{ i.id }}', '{{ task_name|e }}')">&times;</button>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% endfor %}
+    {% endif %}
+  </div>
+</div>

@@ -1,0 +1,8 @@
+/* Missing Drawflow CSS fixes */
+.drawflow .connection .main-path { fill: none; }
+.drawflow .connection { position: absolute; pointer-events: none; z-index: 0; }
+.drawflow-node { position: absolute; z-index: 2; }
+.drawflow-node .input, .drawflow-node .output { width: 14px; height: 14px; border-radius: 50%; position: absolute; z-index: 3; cursor: crosshair; }
+.drawflow-node .input { left: -7px; top: 50%; transform: translateY(-50%); background: white; border: 2px solid var(--border); }
+.drawflow-node .output { right: -7px; top: 50%; transform: translateY(-50%); background: white; border: 2px solid var(--border); }
+.drawflow-node .input:hover, .drawflow-node .output:hover { background: var(--accent); }

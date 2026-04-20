@@ -1,0 +1,59 @@
+<div id="tab-transcriber">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;height:calc(100vh - 120px)">
+    <div style="display:flex;flex-direction:column;gap:16px">
+      <div style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:24px;text-align:center">
+        <div id="rec-status" style="font-size:32px;margin-bottom:12px">&#9679;</div>
+        <div id="rec-timer" style="font-size:28px;color:var(--text-primary);margin-bottom:16px">00:00</div>
+        <div style="display:flex;gap:8px;justify-content:center">
+          <button id="btn-rec" onclick="toggleRecording()" style="padding:10px 24px;border-radius:var(--radius-sm);border:1px solid var(--color-danger);background:transparent;color:var(--color-danger);font-family:var(--font);font-size:13px;cursor:pointer">{{ t('transcriber.start_rec', lang) }}</button>
+          <button id="btn-rec-stop" onclick="stopRecording()" disabled style="padding:10px 24px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-muted);font-family:var(--font);font-size:13px;cursor:pointer">{{ t('transcriber.stop_rec', lang) }}</button>
+        </div>
+        <div style="margin-top:16px;font-size:11px;color:var(--text-muted)">
+          <label style="display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer">
+            <input type="checkbox" id="rec-system" checked> <span>System audio</span>
+          </label>
+        </div>
+      </div>
+      <div id="rec-preview" class="hidden" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px">
+        <audio id="rec-audio" controls style="width:100%;margin-bottom:12px"></audio>
+        <div style="display:flex;gap:8px">
+          <button onclick="uploadAndTranscribe()" style="flex:1;padding:8px;border-radius:var(--radius-sm);border:1px solid var(--color-success);background:transparent;color:var(--color-success);cursor:pointer;font-family:var(--font);font-size:12px">{{ t('transcriber.transcribe', lang) }}</button>
+          <button onclick="uploadOnly()" style="padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--border);background:transparent;color:var(--text-secondary);cursor:pointer;font-family:var(--font);font-size:12px">{{ t('common.save', lang) }}</button>
+          <button onclick="discardRecording()" style="padding:8px 14px;border-radius:var(--radius-sm);border:1px solid var(--color-danger);background:transparent;color:var(--color-danger);cursor:pointer;font-family:var(--font);font-size:12px">&times;</button>
+        </div>
+      </div>
+      <div id="transcribe-controls" style="border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;display:flex;flex-direction:column;gap:10px">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <label style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">{{ t('transcriber.model', lang) }}</label>
+          <select id="whisper-model" class="whisper-model-select">
+            <option value="tiny">tiny</option>
+            <option value="base" selected>base</option>
+            <option value="small">small</option>
+            <option value="medium">medium</option>
+            <option value="large-v3">large-v3</option>
+          </select>
+        </div>
+        <div class="transcribe-phase" id="transcribe-phase">
+          <span class="phase-icon" id="phase-icon"></span>
+          <span id="phase-text"></span>
+        </div>
+        <div class="transcribe-progress-track" id="progress-track" style="display:none">
+          <div class="transcribe-progress-fill" id="progress-fill"></div>
+        </div>
+        <div id="progress-details" style="display:none;font-size:10px;color:var(--text-muted);justify-content:space-between">
+          <span id="progress-percent"></span>
+          <span id="progress-eta"></span>
+        </div>
+      </div>
+      <div id="rec-log" style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:11px;color:var(--text-secondary);min-height:60px;white-space:pre-wrap;display:none"></div>
+    </div>
+    <div style="overflow-y:auto">
+      <div style="font-size:12px;font-weight:500;color:var(--text-primary);margin-bottom:12px;text-transform:uppercase;letter-spacing:1px">{{ t('transcriber.title', lang) }}</div>
+      <div id="recordings-list"></div>
+    </div>
+  </div>
+</div>
+<script>
+if (typeof initWhisperModel === 'function') initWhisperModel();
+if (typeof loadRecordings === 'function') loadRecordings();
+</script>

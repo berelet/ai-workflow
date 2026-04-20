@@ -1,0 +1,72 @@
+# Local configuration
+.env
+
+# Runtime files (generated at runtime)
+runtime/
+
+# Dependencies
+.venv/
+venv/
+venvs/
+node_modules/
+__pycache__/
+*.pyc
+
+# Figma MCP
+figma-mcp/node_modules/
+figma-mcp/*.pem
+
+# Logs
+*.log
+dashboard/server.log
+
+# Projects (metadata and artifacts live in each project's .ai-workflow/ folder)
+projects/
+
+# Pipeline artifacts (local only)
+.ai-workflow/artifacts/
+
+# Uploads (user content)
+uploads/
+
+# Cloned project workspaces (created by "New project from git" flow)
+workspaces/
+
+# Temp files (terminal uploads, auto-cleaned)
+tmp/
+
+# Issue specs / drafts
+docs/issues/
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Figma MCP (cloned repo, reinstall with: git clone + bun install)
+figma-mcp/src/
+figma-mcp/dist/
+figma-mcp/bun.lock
+figma-mcp/package.json
+figma-mcp/tsconfig.json
+figma-mcp/tsup.config.ts
+figma-mcp/Dockerfile
+figma-mcp/DRAGME.md
+figma-mcp/LICENSE
+figma-mcp/readme.md
+figma-mcp/smithery.yaml
+figma-mcp/scripts/
+
+# Transcriber (recordings, models, output — user-local data)
+transcriber/recordings/
+transcriber/output/
+
+# Whisper models cache
+huggingface/
+.cache/
+
+# Build artifacts
+designer/output/*.png
+*.pid

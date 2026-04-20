@@ -1,0 +1,35 @@
+<div id="tab-terminal">
+  <div class="terminal-container">
+    <div id="term-task-header" class="term-task-header"></div>
+    <div class="terminal-toolbar" style="flex-direction:column;gap:8px">
+      <div style="display:flex;gap:8px;align-items:flex-end;width:100%">
+        <textarea id="term-prompt" rows="2" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();startRun()}" placeholder="{{ t('terminal.prompt_placeholder', lang) }}" style="flex:1;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:13px;resize:none;min-height:44px;max-height:200px;line-height:1.5;overflow-y:auto"></textarea>
+        <select id="term-provider" onchange="updateModelOptions()" style="width:auto;padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:12px;height:36px">
+          <option value="claude">Claude</option>
+          <option value="kiro">Kiro</option>
+        </select>
+        <select id="term-model" style="width:auto;padding:6px 10px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:12px;height:36px"></select>
+        <button class="btn-start" id="btn-start" onclick="startRun()">{{ t('terminal.start', lang) }}</button>
+        <button class="btn-stop" id="btn-stop" onclick="stopRun()" disabled>{{ t('terminal.stop', lang) }}</button>
+        <button id="btn-tts" onclick="toggleTTS()" style="background:transparent;color:var(--text-secondary);border:1px solid var(--border);padding:6px 10px;border-radius:var(--radius-sm);cursor:pointer;font-size:13px" title="{{ t('terminal.tts', lang) }}">&#128264;</button>
+      </div>
+    </div>
+    <div class="terminal-output" id="term-output"></div>
+    <div class="terminal-input-row" id="term-input-row" style="margin-top:8px;">
+      <textarea id="term-input" rows="2" oninput="autoGrow(this)" onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendInput()}" placeholder="{{ t('terminal.prompt_placeholder', lang) }}" style="width:100%;padding:10px 12px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--bg-primary);color:var(--text-primary);font-family:var(--font);font-size:13px;resize:none;min-height:44px;max-height:200px;line-height:1.5;overflow-y:auto;box-sizing:border-box"></textarea>
+      <div class="term-input-buttons">
+        <input type="file" id="term-file-input" style="position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip:rect(0,0,0,0)">
+        <label for="term-file-input" class="term-btn-icon" style="cursor:pointer;margin:0;display:inline-flex;align-items:center" title="{{ t('terminal.upload', lang) }}">&#128206;</label>
+        <button onclick="sendInput(i18n.t('terminal.next'))" class="term-btn-accent">{{ t('terminal.next', lang) }}</button>
+        <button id="btn-mic" onclick="toggleMic()" class="term-btn-icon" title="{{ t('terminal.voice', lang) }}">&#127908;</button>
+        <span style="flex:1"></span>
+        <button onclick="sendInput()" class="term-btn-send">{{ t('terminal.send', lang) }}</button>
+      </div>
+    </div>
+    <div class="terminal-status" id="term-status">{{ t('terminal.ready', lang) }}</div>
+  </div>
+</div>
+<script>
+if (typeof updateModelOptions === 'function') updateModelOptions();
+if (typeof checkActiveSession === 'function') checkActiveSession();
+</script>

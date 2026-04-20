@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/css/dashboard.css">
+<link rel="stylesheet" href="/static/css/mobile.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<script src="/static/lib/htmx.min.js"></script>
+<script src="/static/lib/alpine.min.js" defer></script>
+<title>Artifacts — #{{ task_id }} {{ task_title }}</title>
+</head>
+<body>
+
+<div class="artifacts-page">
+  <div class="artifacts-page-header">
+    <div>
+      <h1>#{{ task_id }} {{ task_title }}</h1>
+      <span class="artifacts-page-meta">{{ project }} &middot; {{ artifacts|length }} artifacts</span>
+    </div>
+  </div>
+
+  <div class="artifacts-page-layout">
+    <!-- Mobile: burger to toggle list -->
+    <button class="mobile-toggle-list" onclick="document.getElementById('artifact-sidebar').classList.toggle('mobile-open')">
+      &#9776; Artifacts ({{ artifacts|length }})
+    </button>
+
+    <!-- Sidebar: artifact list -->
+    <div class="artifacts-page-sidebar" id="artifact-sidebar">
+      {% set current_stage = namespace(val='') %}
+      {% for a in artifacts %}
+      {% if a.stage != current_stage.val %}
+      {% set current_stage.val = a.stage %}
+      <div class="artifact-stage-label">{{ a.stage }}</div>
+      {% endif %}
+      <button class="artifact-sidebar-btn"
+              onclick="document.querySelectorAll('.artifact-sidebar-btn').forEach(b=>b.classList.remove('active'));this.classList.add('active');document.getElementById('artifact-sidebar').classList.remove('mobile-open')"
+              hx-get="/ui/partials/artifact-content/{{ a.id }}?project={{ project }}"
+              hx-target="#artifact-viewer"
+              hx-swap="innerHTML">
+        <span>{{ a.name }}</span>
+        {% if a.size_bytes %}<span class="artifact-size">{{ (a.size_bytes / 1024)|round(1) }}kb</span>{% endif %}
+      </button>
+      {% endfor %}
+    </div>
+
+    <!-- Main viewer -->
+    <div class="artifacts-page-viewer" id="artifact-viewer">
+      <div style="color:var(--text-muted);font-size:12px;padding:40px;text-align:center">
+        ← {{ t('artifacts.select', lang) if t else 'Select an artifact to view' }}
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Zoom overlay -->
+<div id="artifact-zoom-overlay" onclick="this.classList.remove('active')">
+  <img id="artifact-zoom-img" src="">
+</div>
+
+<script>
+function openArtifactZoom(src) {
+  var overlay = document.getElementById('artifact-zoom-overlay');
+  var img = document.getElementById('artifact-zoom-img');
+  img.src = src;
+  overlay.classList.add('active', 'native');
+}
+document.getElementById('artifact-zoom-overlay').addEventListener('click', function(e) {
+  if (e.target === document.getElementById('artifact-zoom-img')) {
+    this.classList.toggle('native');
+  } else {
+    this.classList.remove('active', 'native');
+  }
+});
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') document.getElementById('artifact-zoom-overlay').classList.remove('active', 'native');
+});
+</script>
+
+<style>
+.artifacts-page { display: flex; flex-direction: column; height: 100vh; }
+.artifacts-page-header { padding: 16px 24px; border-bottom: 1px solid var(--border); background: var(--bg-secondary); }
+.artifacts-page-header h1 { font-size: 14px; font-weight: 500; color: var(--text-primary); margin: 0 0 4px; }
+.artifacts-page-meta { font-size: 11px; color: var(--text-muted); }
+.artifacts-page-layout { display: grid; grid-template-columns: 240px 1fr; flex: 1; min-height: 0; }
+.artifacts-page-sidebar { border-right: 1px solid var(--border); padding: 8px 0; overflow-y: auto; background: var(--bg-secondary); }
+.artifact-sidebar-btn { display: flex; align-items: center; gap: 6px; width: 100%; padding: 7px 14px; border: none; border-left: 2px solid transparent; background: transparent; color: var(--text-secondary); font-family: var(--font); font-size: 12px; cursor: pointer; text-align: left; transition: all 0.15s; }
+.artifact-sidebar-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
+.artifact-sidebar-btn.active { color: var(--text-primary); border-left-color: var(--accent); background: var(--bg-hover); }
+.artifacts-page-viewer { padding: 24px; overflow: auto; }
+.artifacts-page-viewer .artifact-content-pre { margin: 0; padding: 0; white-space: pre-wrap; word-break: break-word; font-size: 12px; line-height: 1.6; color: var(--text-secondary); }
+.artifacts-page-viewer .artifact-iframe { width: 100%; height: calc(100vh - 100px); border: 1px solid var(--border); border-radius: var(--radius-sm); background: #fff; }
+.artifact-img { max-width: 100%; max-height: calc(100vh - 120px); object-fit: contain; cursor: zoom-in; border-radius: var(--radius-sm); }
+#artifact-zoom-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); z-index: 1000; overflow: auto; cursor: zoom-out; padding: 24px; }
+#artifact-zoom-overlay.active { display: flex; align-items: center; justify-content: center; }
+#artifact-zoom-overlay img { max-width: 95vw; max-height: 95vh; object-fit: contain; border-radius: var(--radius-sm); cursor: default; }
+#artifact-zoom-overlay.native img { max-width: none; max-height: none; cursor: zoom-out; align-self: flex-start; }
+
+.mobile-toggle-list { display: none; }
+
+@media (max-width: 768px) {
+  .artifacts-page-layout { display: flex; flex-direction: column; }
+  .artifacts-page-viewer { padding: 12px; flex: 1; min-height: 0; overflow-y: auto; }
+  .artifacts-page-header { padding: 12px 16px; }
+  .artifacts-page-header h1 { font-size: 13px; }
+  .artifact-sidebar-btn { font-size: 11px; padding: 8px 12px; }
+  .artifact-sidebar-btn.active { background: var(--bg-primary); }
+  .mobile-toggle-list {
+    display: block; width: 100%; padding: 10px 16px;
+    background: var(--bg-secondary); border: none; border-bottom: 1px solid var(--border);
+    color: var(--text-primary); font-family: var(--font); font-size: 12px;
+    text-align: left; cursor: pointer;
+  }
+  .mobile-toggle-list:hover { background: var(--bg-hover); }
+  .artifacts-page-sidebar { max-height: 0; overflow: hidden; border-bottom: none; transition: max-height 0.2s; }
+  .artifacts-page-sidebar.mobile-open { max-height: 50vh; overflow-y: auto; border-bottom: 1px solid var(--border); }
+}
+</style>
+
+</body>
+</html>

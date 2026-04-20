@@ -1,0 +1,73 @@
+{
+  "name": "project",
+  "dependencies": {
+    "tessl/npm-jsdom": {
+      "version": "27.4.0"
+    },
+    "tessl/npm-puppeteer-core": {
+      "version": "24.19.0"
+    },
+    "cisco/software-security": {
+      "version": "1.2.5"
+    },
+    "secondsky/claude-skills": {
+      "source": "https://github.com/secondsky/claude-skills",
+      "include": {
+        "skills": [
+          "systematic-debugging",
+          "api-testing",
+          "web-performance-audit"
+        ]
+      },
+      "version": "1cb75209dc95e024c0b4169f8b8deaec3516d22d"
+    },
+    "mindrally/skills": {
+      "source": "https://github.com/mindrally/skills",
+      "include": {
+        "skills": [
+          "fastapi-python"
+        ]
+      },
+      "version": "47f47c12e62f62b5e171bd5af61d0fc24b329701"
+    },
+    "softaworks/agent-toolkit": {
+      "source": "https://github.com/softaworks/agent-toolkit",
+      "include": {
+        "skills": [
+          "react-dev",
+          "requirements-clarity"
+        ]
+      },
+      "version": "62b5df50daf75a28d3c0c626d6147539287575fc"
+    },
+    "anthropics/skills": {
+      "source": "https://github.com/anthropics/skills",
+      "include": {
+        "skills": [
+          "webapp-testing"
+        ]
+      },
+      "version": "1ed29a03dc852d30fa6ef2ca53a67dc2c2c2c563"
+    },
+    "alirezarezvani/claude-skills": {
+      "source": "https://github.com/alirezarezvani/claude-skills",
+      "include": {
+        "skills": [
+          "product-manager-toolkit"
+        ]
+      },
+      "version": "0bea02d2b6ab9647300dc10d71e4336ddd61c68c"
+    },
+    "sickn33/antigravity-awesome-skills": {
+      "version": "1f1ad5eb3ead14f8ceca3e59d39f3e0425f662ca",
+      "source": "https://github.com/sickn33/antigravity-awesome-skills",
+      "include": {
+        "skills": [
+          "performance-profiling",
+          "web-performance-optimization",
+          "application-performance-performance-optimization"
+        ]
+      }
+    }
+  }
+}

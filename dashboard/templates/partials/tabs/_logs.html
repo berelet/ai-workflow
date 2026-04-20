@@ -1,0 +1,40 @@
+<div id="tab-logs" x-data="{ loading: false }">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <span style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:1px">
+      {{ t('logs.title', lang) }}
+    </span>
+    <div style="display:flex;gap:8px">
+      <button hx-get="/ui/partials/tabs/logs?project={{ project }}"
+              hx-target="#tab-content"
+              hx-swap="innerHTML"
+              style="padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--text-muted);cursor:pointer;font-family:var(--font);font-size:11px;border-radius:var(--radius-sm)">
+        &#8635;
+      </button>
+      <button @click="clearLogs()"
+              style="padding:4px 12px;border:1px solid var(--border);background:transparent;color:var(--color-danger);cursor:pointer;font-family:var(--font);font-size:11px;border-radius:var(--radius-sm)">
+        {{ t('logs.clear', lang) }}
+      </button>
+    </div>
+  </div>
+
+  {% if telemetry.count > 0 %}
+  <div style="display:flex;gap:16px;margin-bottom:12px;font-size:11px;color:var(--text-muted)">
+    <span>{{ t('logs.title', lang) }}: {{ telemetry.count }}</span>
+  </div>
+  <pre style="background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:16px;font-size:11px;line-height:1.6;overflow:auto;height:calc(100vh - 200px);color:var(--text-secondary)">{% for line in telemetry.lines %}{{ line }}
+{% endfor %}</pre>
+  {% else %}
+  <p style="color:var(--text-muted);font-size:12px;margin-top:20px">{{ t('logs.empty', lang) }}</p>
+  {% endif %}
+</div>
+
+<script>
+async function clearLogs() {
+  try {
+    await API.del('/api/telemetry');
+    htmx.ajax('GET', '/ui/partials/tabs/logs?project=' + encodeURIComponent(AppState.currentProject || ''), '#tab-content');
+  } catch (e) {
+    console.error('clearLogs error:', e);
+  }
+}
+</script>

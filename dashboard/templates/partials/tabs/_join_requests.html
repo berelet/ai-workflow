@@ -1,0 +1,109 @@
+<div id="tab-join-requests" x-data="{ statusFilter: 'pending' }">
+  <h2 style="font-size: 15px; font-weight: 600; margin-bottom: 16px; color: var(--text-primary);">
+    {{ t('join_requests.title', lang) }}
+    {% if pending_count > 0 %}
+    <span class="tab-badge">{{ pending_count }}</span>
+    {% endif %}
+  </h2>
+
+  <!-- Filter tabs -->
+  <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap;">
+    <button class="page-btn"
+            :class="{ active: statusFilter === 'pending' }"
+            @click="statusFilter = 'pending'"
+            hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status=pending&partial=list"
+            hx-target="#join-requests-list"
+            hx-swap="innerHTML">
+      {{ t('join_requests.filter_pending', lang) }}
+    </button>
+    <button class="page-btn"
+            :class="{ active: statusFilter === 'approved' }"
+            @click="statusFilter = 'approved'"
+            hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status=approved&partial=list"
+            hx-target="#join-requests-list"
+            hx-swap="innerHTML">
+      {{ t('join_requests.filter_approved', lang) }}
+    </button>
+    <button class="page-btn"
+            :class="{ active: statusFilter === 'rejected' }"
+            @click="statusFilter = 'rejected'"
+            hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status=rejected&partial=list"
+            hx-target="#join-requests-list"
+            hx-swap="innerHTML">
+      {{ t('join_requests.filter_rejected', lang) }}
+    </button>
+    <button class="page-btn"
+            :class="{ active: statusFilter === 'cancelled' }"
+            @click="statusFilter = 'cancelled'"
+            hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status=cancelled&partial=list"
+            hx-target="#join-requests-list"
+            hx-swap="innerHTML">
+      {{ t('join_requests.filter_cancelled', lang) }}
+    </button>
+    <button class="page-btn"
+            :class="{ active: statusFilter === 'all' }"
+            @click="statusFilter = 'all'"
+            hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status=all&partial=list"
+            hx-target="#join-requests-list"
+            hx-swap="innerHTML">
+      {{ t('join_requests.filter_all', lang) }}
+    </button>
+  </div>
+
+  <div id="join-requests-list" class="join-requests-list">
+    {% if join_requests|length == 0 %}
+    <div class="catalog-empty" style="padding: 30px 20px;">
+      <p>{{ t('join_requests.empty', lang) }}</p>
+    </div>
+    {% else %}
+      {% for jr in join_requests %}
+      <div class="join-request-row {% if jr.status != 'pending' %}processed{% endif %}" id="jr-{{ jr.id }}">
+        <div class="join-request-avatar">
+          {{ jr.user.display_name[:1]|upper if jr.user.display_name else jr.user.email[:1]|upper }}
+        </div>
+        <div class="join-request-info">
+          <div class="join-request-name">{{ jr.user.display_name or jr.user.email }}</div>
+          <div class="join-request-email">{{ jr.user.email }}</div>
+          <div class="join-request-date">{{ jr.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+          {% if jr.message %}
+          <div class="join-request-message">"{{ jr.message }}"</div>
+          {% endif %}
+        </div>
+        <div class="join-request-actions">
+          {% if jr.status == 'pending' %}
+          <button class="btn-approve"
+                  hx-patch="/api/projects/{{ project }}/join-requests/{{ jr.id }}?action=approve"
+                  hx-target="#jr-{{ jr.id }}"
+                  hx-swap="outerHTML"
+                  hx-disable-elt="this">
+            {{ t('join_requests.approve', lang) }}
+          </button>
+          <button class="btn-reject"
+                  hx-patch="/api/projects/{{ project }}/join-requests/{{ jr.id }}?action=reject"
+                  hx-target="#jr-{{ jr.id }}"
+                  hx-swap="outerHTML"
+                  hx-disable-elt="this">
+            {{ t('join_requests.reject', lang) }}
+          </button>
+          {% elif jr.status == 'approved' %}
+          <span class="badge-approved">{{ t('join_requests.approved', lang) }}</span>
+          {% elif jr.status == 'rejected' %}
+          <span class="badge-rejected">{{ t('join_requests.rejected', lang) }}</span>
+          {% elif jr.status == 'cancelled' %}
+          <span class="badge-cancelled">{{ t('join_requests.cancelled', lang) }}</span>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+
+      {% if has_more %}
+      <button class="btn-join" style="margin: 16px auto; display: block;"
+              hx-get="/ui/partials/tabs/join-requests?project={{ project }}&status={{ status_filter }}&offset={{ offset + limit }}&partial=list"
+              hx-target="this"
+              hx-swap="outerHTML">
+        {{ t('join_requests.load_more', lang) }}
+      </button>
+      {% endif %}
+    {% endif %}
+  </div>
+</div>

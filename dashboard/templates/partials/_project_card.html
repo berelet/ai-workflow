@@ -1,0 +1,43 @@
+<article class="project-card" role="article">
+  <div class="project-card-title">{{ p.name }}</div>
+
+  {% if p.description %}
+  <div class="project-card-desc">{{ p.description[:200] }}{% if p.description|length > 200 %}...{% endif %}</div>
+  {% endif %}
+
+  {% if p.stack %}
+  <div class="project-card-tags">
+    {% for tag in p.stack.split(',') %}
+      {% set tag_trimmed = tag.strip() %}
+      {% if tag_trimmed %}
+      <span class="tag">{{ tag_trimmed }}</span>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <div class="project-card-footer">
+    <span>{{ t('catalog.members_count', lang, count=p.member_count|string) }} · {{ p.created_at|format_date(lang) }}</span>
+
+    <div class="join-action">
+      {% if not user %}
+        <a href="/login.html?next=/catalog" class="login-link">{{ t('catalog.login_to_join', lang) }}</a>
+      {% elif p.is_member %}
+        <span class="badge-member">{{ t('catalog.is_member', lang) }}</span>
+      {% elif p.has_pending %}
+        <button class="btn-join-sent" disabled>{{ t('catalog.request_sent', lang) }}</button>
+      {% else %}
+        <form method="POST" action="/catalog/join/{{ p.slug }}">
+          <button class="btn-join"
+                  hx-post="/api/projects/{{ p.slug }}/join"
+                  hx-swap="outerHTML"
+                  hx-target="closest .join-action"
+                  hx-disable-elt="this"
+                  type="submit">
+            {{ t('catalog.join_request', lang) }}
+          </button>
+        </form>
+      {% endif %}
+    </div>
+  </div>
+</article>

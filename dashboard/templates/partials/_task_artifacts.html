@@ -1,0 +1,49 @@
+{# Per-task artifact list — lightweight metadata only, content loads on click #}
+{% if not artifacts %}
+<div style="color:var(--text-muted);font-size:11px;padding:8px">
+  {{ t('artifacts.empty', lang) }}
+</div>
+{% else %}
+<div class="task-artifacts-list">
+  {% set current_stage = namespace(val='') %}
+  {% for a in artifacts %}
+  {% if a.stage != current_stage.val %}
+  {% set current_stage.val = a.stage %}
+  <div class="artifact-stage-label">{{ a.stage }}</div>
+  {% endif %}
+  <div class="task-artifact-item" x-data="{ expanded: false }">
+    {% if a.is_viewable %}
+    <button class="task-artifact-btn" @click="expanded = !expanded"
+            :class="{ 'artifact-active': expanded }">
+      <span class="artifact-icon" x-text="expanded ? '&#9662;' : '&#9656;'"></span>
+      <span>{{ a.name }}</span>
+      {% if a.size_bytes %}<span class="artifact-size">{{ (a.size_bytes / 1024)|round(1) }}kb</span>{% endif %}
+    </button>
+    <div x-show="expanded" x-cloak
+         x-effect="if(expanded && !$el.dataset.loaded) { $el.dataset.loaded='1'; htmx.ajax('GET', '/ui/partials/artifact-content/{{ a.id }}?project={{ project }}', {target: $el, swap: 'innerHTML'}) }"
+         class="artifact-expand-area">
+      <div style="padding:12px;color:var(--text-muted);font-size:11px">{{ t('common.loading', lang) }}</div>
+    </div>
+    {% elif a.is_image %}
+    <button class="task-artifact-btn" @click="expanded = !expanded"
+            :class="{ 'artifact-active': expanded }">
+      <span class="artifact-icon" x-text="expanded ? '&#9662;' : '&#9656;'"></span>
+      <span>{{ a.name }}</span>
+      {% if a.size_bytes %}<span class="artifact-size">{{ (a.size_bytes / 1024)|round(1) }}kb</span>{% endif %}
+    </button>
+    <div x-show="expanded" x-cloak class="artifact-expand-area">
+      <img src="/api/artifacts/{{ a.id }}/raw?project={{ project }}"
+           style="max-width:100%;max-height:400px;border-radius:var(--radius-sm);margin:8px"
+           loading="lazy">
+    </div>
+    {% else %}
+    <div class="task-artifact-btn" style="opacity:0.5;cursor:default">
+      <span class="artifact-icon">&#9633;</span>
+      <span>{{ a.name }}</span>
+      <span class="artifact-size">{{ a.artifact_type }}</span>
+    </div>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

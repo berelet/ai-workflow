@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="{{ lang }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/static/css/base.css">
+<link rel="stylesheet" href="/static/css/components.css">
+<link rel="stylesheet" href="/static/lib/drawflow.min.css">
+<link rel="stylesheet" href="/static/css/drawflow_fixes.css">
+<link rel="stylesheet" href="/static/css/dashboard.css">
+<link rel="stylesheet" href="/static/css/catalog.css">
+<link rel="stylesheet" href="/static/css/mobile.css">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<title>{{ t('app.title', lang) }}</title>
+{% block head %}{% endblock %}
+</head>
+<body>
+
+{% include "partials/_topbar.html" %}
+
+<!-- Sync banner -->
+<div id="sync-banner" class="hidden"
+     hx-get="/ui/partials/sync-check?project={{ project }}"
+     hx-trigger="every 15s"
+     hx-swap="innerHTML">
+  {{ t('sync.updates_available', lang) }}
+</div>
+
+<div class="main">
+  {% block modals %}{% endblock %}
+
+  <!-- Tab content area — HTMX swaps partials here -->
+  <div id="tab-content">
+    {% block content %}{% endblock %}
+  </div>
+</div>
+
+<!-- Core libs -->
+<script src="/static/lib/drawflow.min.js"></script>
+<script src="/static/lib/htmx.min.js"></script>
+<script defer src="/static/lib/alpine.min.js"></script>
+
+<!-- Core JS modules -->
+<script src="/static/js/utils/dom.js"></script>
+<script src="/static/js/utils/format.js"></script>
+<script src="/static/js/core/api.js"></script>
+<script src="/static/js/core/auth.js"></script>
+<script src="/static/js/core/i18n.js"></script>
+<script src="/static/js/core/state.js"></script>
+<script src="/static/js/core/sync.js"></script>
+<script src="/static/js/core/ws.js"></script>
+
+<!-- i18n subset for JS-only contexts (terminal, transcriber) -->
+<script>
+window.__lang = '{{ lang }}';
+window.__i18n = {{ get_all_strings(lang)|tojson }};
+window.t = function(key, params) {
+  let s = window.__i18n[key] || key;
+  if (params) Object.entries(params).forEach(function([k,v]) { s = s.replaceAll('{'+k+'}', v); });
+  return s;
+};
+</script>
+
+<!-- Focused JS modules -->
+<script src="/static/js/focused/drawflow-editor.js"></script>
+<script src="/static/js/focused/terminal-ws.js"></script>
+<script src="/static/js/focused/voice.js"></script>
+<script src="/static/js/focused/queue.js"></script>
+<script src="/static/js/focused/pipeline-progress.js"></script>
+<script src="/static/js/focused/transcriber.js"></script>
+
+<!-- Notification bell Alpine component -->
+<script>
+function queueIndicator() {
+  return {
+    open: false,
+    hasQueue: false,
+    running: false,
+    queueId: null,
+    items: [],
+    statusText: '',
+    polling: null,
+    toggle() {
+      this.open = !this.open;
+    },
+    async startPolling() {
+      await this.fetchStatus();
+      this.polling = setInterval(() => this.fetchStatus(), 5000);
+    },
+    async fetchStatus() {
+      var project = (typeof AppState !== 'undefined' && AppState.currentProject) || '';
+      if (!project) return;
+      try {
+        var r = await fetch('/api/queue/active/list?project_slug=' + encodeURIComponent(project));
+        if (!r.ok) return;
+        var d = await r.json();
+        var queues = d.queues || [];
+        if (!queues.length) { this.hasQueue = false; return; }
+        var q = queues[0];
+        this.queueId = q.id;
+        this.hasQueue = true;
+        this.running = q.status === 'running';
+        // Fetch full details
+        var r2 = await fetch('/api/queue/' + q.id);
+        if (!r2.ok) return;
+        var detail = await r2.json();
+        this.items = detail.items || [];
+        var done = detail.completed || 0;
+        var total = detail.total || 0;
+        var statusKey = 'queue.' + detail.status;
+        this.statusText = (typeof i18n !== 'undefined' ? i18n.t(statusKey) : detail.status)
+          + ' — ' + done + '/' + total;
+      } catch(e) {}
+    },
+    async cancelQueue() {
+      if (!this.queueId) return;
+      try { await fetch('/api/queue/' + this.queueId + '/cancel', { method: 'POST' }); } catch(e) {}
+      await this.fetchStatus();
+    },
+    async showLog(item) {
+      if (!item.terminal_session_id) return;
+      this.open = false;
+      // Fetch session output
+      try {
+        var r = await fetch('/api/terminal/poll/' + item.terminal_session_id + '?cursor=0');
+        if (!r.ok) return;
+        var d = await r.json();
+        var text = (d.chunks || []).join('');
+        // Show in modal
+        var existing = document.getElementById('queue-log-overlay');
+        if (existing) existing.remove();
+        var ov = document.createElement('div');
+        ov.id = 'queue-log-overlay';
+        ov.className = 'modal-overlay';
+        ov.style.display = 'flex';
+        ov.innerHTML =
+          '<div class="modal" style="max-width:800px;width:100%;max-height:90vh;display:flex;flex-direction:column">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">' +
+              '<h3 style="margin:0">' + (typeof escapeHtml === 'function' ? escapeHtml(item.task_id_display + ' — ' + item.title) : item.task_id_display) + '</h3>' +
+              '<button onclick="this.closest(\'.modal-overlay\').remove()" style="background:none;border:none;color:var(--text-secondary);font-size:18px;cursor:pointer">&times;</button>' +
+            '</div>' +
+            (item.error_message ? '<div style="color:var(--color-danger);font-size:12px;margin-bottom:8px">' + (typeof escapeHtml === 'function' ? escapeHtml(item.error_message) : item.error_message) + '</div>' : '') +
+            '<pre style="flex:1;overflow:auto;background:var(--bg-primary);border:1px solid var(--border);border-radius:var(--radius-sm);padding:12px;font-size:11px;line-height:1.5;white-space:pre-wrap;word-break:break-word;color:var(--text-secondary);margin:0">' +
+              (typeof escapeHtml === 'function' ? escapeHtml(text || '(no output)') : text || '(no output)') +
+            '</pre>' +
+          '</div>';
+        document.body.appendChild(ov);
+      } catch(e) { console.error('showLog error:', e); }
+    },
+    statusColor(s) {
+      return { pending: 'var(--text-muted)', running: 'var(--accent)', completed: 'var(--color-success)', failed: 'var(--color-danger)', skipped: 'var(--text-muted)' }[s] || 'var(--text-secondary)';
+    },
+    statusIcon(s) {
+      return { pending: '○', running: '◉', completed: '✓', failed: '✗', skipped: '—' }[s] || '?';
+    },
+    statusLabel(s) {
+      return typeof i18n !== 'undefined' ? i18n.t('queue.' + s) : s;
+    },
+    destroy() {
+      if (this.polling) clearInterval(this.polling);
+    }
+  };
+}
+
+function notificationBell() {
+  return {
+    open: false,
+    count: 0,
+    items: [],
+    polling: null,
+    toggle() {
+      this.open = !this.open;
+      if (this.open) this.loadItems();
+    },
+    async startPolling() {
+      await this.fetchCount();
+      this.polling = setInterval(() => this.fetchCount(), 30000);
+    },
+    async fetchCount() {
+      try {
+        const r = await fetch('/api/notifications/count');
+        if (r.ok) { const d = await r.json(); this.count = d.unread_count; }
+      } catch(e) {}
+    },
+    async loadItems() {
+      try {
+        const r = await fetch('/api/notifications?limit=10');
+        if (r.ok) { const d = await r.json(); this.items = d.items; this.count = d.unread_count; }
+      } catch(e) {}
+    },
+    async markAllRead() {
+      try {
+        await fetch('/api/notifications/read-all', { method: 'POST' });
+        this.items.forEach(n => n.is_read = true);
+        this.count = 0;
+      } catch(e) {}
+    },
+    async clickNotification(n) {
+      if (!n.is_read) {
+        try { await fetch('/api/notifications/' + n.id + '/read', { method: 'PATCH' }); n.is_read = true; this.count = Math.max(0, this.count - 1); } catch(e) {}
+      }
+      if (n.link && n.link.startsWith('/')) { window.location.href = n.link; }
+      this.open = false;
+    },
+    destroy() {
+      if (this.polling) { clearInterval(this.polling); this.polling = null; }
+    },
+    showAll() {
+      this.open = false;
+    },
+    timeAgo(iso) {
+      var d = new Date(iso);
+      var diff = Math.floor((Date.now() - d.getTime()) / 1000);
+      if (diff < 60) return (window.t ? window.t('notifications.just_now') : 'just now');
+      if (diff < 3600) return Math.floor(diff / 60) + ' min';
+      if (diff < 86400) return Math.floor(diff / 3600) + ' hr';
+      return Math.floor(diff / 86400) + ' d';
+    }
+  };
+}
+</script>
+
+<!-- Re-init Alpine on HTMX swaps -->
+<script>
+document.addEventListener('htmx:afterSwap', function(e) {
+  if (window.Alpine && e.detail.elt) {
+    Alpine.initTree(e.detail.elt);
+  }
+  // Re-apply i18n to swapped content
+  if (window.i18n && i18n._loaded) {
+    i18n.apply();
+  }
+});
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>

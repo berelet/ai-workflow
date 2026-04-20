@@ -1,0 +1,104 @@
+<div id="tab-board" x-data="boardTab()">
+  <!-- Top bar: filters + archive button -->
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+    <div class="filter-bar" id="board-filters" style="margin-bottom:0">
+      {% set statuses = ['todo', 'in-progress', 'done'] %}
+      {% set status_labels = {'todo': 'board.todo', 'in-progress': 'board.in_progress', 'done': 'board.done'} %}
+      {% for s in statuses %}
+      {% set count = backlog_items|selectattr('status', 'equalto', s)|list|length %}
+      <button class="filter-btn"
+              :class="{ 'active': filters.has('{{ s }}') }"
+              @click="toggleFilter('{{ s }}')">
+        {{ t(status_labels[s], lang) }}<span class="count">{{ count }}</span>
+      </button>
+      {% endfor %}
+    </div>
+    {% if user_role in ('editor', 'owner') or is_superadmin %}
+    {% if backlog_items|selectattr('status', 'equalto', 'done')|list|length %}
+    <button class="btn btn-ghost"
+            hx-post="/ui/actions/archive-done?project={{ project }}"
+            hx-target="#tab-content"
+            hx-swap="innerHTML"
+            style="font-size:11px;white-space:nowrap">{{ t('board.archive_done', lang) }}</button>
+    {% endif %}
+    {% endif %}
+  </div>
+
+  {% if user_role in ('editor', 'owner') or is_superadmin %}
+  <div style="display:flex;gap:8px;align-items:center;margin-bottom:4px">
+    <button class="add-task-btn" onclick="openAddModal('todo')" style="max-width:300px;margin-bottom:0">+ {{ t('board.add_task', lang) }}</button>
+    <button class="btn btn-ghost queue-btn" onclick="queueSelected()" style="font-size:11px;white-space:nowrap;display:none" id="btn-queue-selected">&#9654;&#9654; {{ t('queue.run_all', lang) }} (<span id="queue-sel-count">0</span>)</button>
+  </div>
+  {% endif %}
+
+  <!-- Kanban columns -->
+  <div class="backlog-board" id="board-columns">
+    {% for s in statuses %}
+    {% set col_items = backlog_items|selectattr('status', 'equalto', s)|list %}
+    <div class="backlog-column" x-show="filters.has('{{ s }}')">
+      <div class="backlog-column-header">
+        {{ t(status_labels[s], lang) }}
+        <span class="col-count">{{ col_items|length }}</span>
+      </div>
+      {% if col_items %}
+      {% for i in col_items %}
+      {% set task_name = i.task or i.title or '' %}
+      {% set art_count = artifact_counts.get(i.id|string, 0) %}
+      <div class="backlog-card p-{{ i.priority|default('medium') }}" onclick="openEditModal('{{ i.id }}')">
+        <div class="card-header">
+          <span class="card-id">#{{ i.id }}</span>
+          <span class="badge-priority badge-{{ i.priority|default('medium') }}">{{ i.priority|default('medium') }}</span>
+        </div>
+        <div class="card-title">{{ task_name }}</div>
+        {% if i.description %}
+        <div class="card-desc">{{ i.description[:80] }}{% if i.description|length > 80 %}...{% endif %}</div>
+        {% endif %}
+        {% if i.images %}
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px">
+          {% for img in i.images %}
+          {% set url = img if img is string else img.url %}
+          <img src="{{ url }}" style="width:40px;height:40px;object-fit:cover;border-radius:2px;border:1px solid var(--border);cursor:pointer" onclick="event.stopPropagation();openImageModal('{{ url }}')">
+          {% endfor %}
+        </div>
+        {% endif %}
+        <div class="card-footer">
+          <div style="display:flex;align-items:center;gap:6px">
+            {% if user_role in ('editor', 'owner') or is_superadmin %}
+            {% if s in ('todo', 'in-progress') %}
+            <input type="checkbox" class="queue-checkbox" value="{{ i.id }}" onclick="event.stopPropagation();toggleQueueItem(this)">
+            {% endif %}
+            {% endif %}
+            {% if art_count %}
+            <a class="artifact-badge" href="/artifacts/{{ project }}/{{ i.id }}" target="_blank" onclick="event.stopPropagation()" title="{{ t('board.artifacts', lang) }}">{{ art_count }} art.</a>
+            {% endif %}
+          </div>
+          {% if user_role in ('editor', 'owner') or is_superadmin %}
+          <div class="card-actions">
+            <button class="btn-run" onclick="event.stopPropagation();runTask('{{ i.id }}', '{{ task_name|e }}')">&#9654;</button>
+            <button class="btn-del" onclick="event.stopPropagation();delTask('{{ i.id }}', '{{ task_name|e }}')">&times;</button>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+      {% else %}
+      <div style="color:var(--text-muted);font-size:11px;text-align:center;padding:20px">&mdash;</div>
+      {% endif %}
+    </div>
+    {% endfor %}
+  </div>
+
+</div>
+
+<script>
+function boardTab() {
+  return {
+    filters: new Set(['todo', 'in-progress', 'done']),
+    toggleFilter(status) {
+      if (this.filters.has(status)) this.filters.delete(status);
+      else this.filters.add(status);
+      this.filters = new Set(this.filters);
+    }
+  };
+}
+</script>

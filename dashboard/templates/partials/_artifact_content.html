@@ -1,0 +1,16 @@
+{# Single artifact content — loaded lazily via HTMX #}
+{% if is_image %}
+<div style="padding:8px">
+  <img src="{{ image_src }}"
+       class="artifact-img"
+       onclick="if(typeof openArtifactZoom==='function')openArtifactZoom(this.src)"
+       loading="lazy">
+</div>
+{% elif is_html %}
+<iframe class="artifact-iframe"
+        src="/api/artifacts/{{ artifact_id }}/raw?project={{ project }}"
+        sandbox="allow-scripts allow-same-origin"
+        loading="lazy"></iframe>
+{% else %}
+<pre class="artifact-content-pre">{{ artifact_content }}</pre>
+{% endif %}

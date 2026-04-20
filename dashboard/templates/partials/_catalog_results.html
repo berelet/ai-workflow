@@ -1,0 +1,62 @@
+{% if projects|length > 0 %}
+<div class="catalog-grid">
+  {% for p in projects %}
+    {% include "partials/_project_card.html" %}
+  {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if total > limit %}
+<nav class="catalog-pagination" aria-label="Pagination">
+  {% set current_page = (offset // limit) + 1 %}
+  {% set total_pages = ((total - 1) // limit) + 1 %}
+
+  {% if current_page > 1 %}
+  <a href="/catalog?q={{ q|urlencode }}&offset={{ (current_page - 2) * limit }}&limit={{ limit }}"
+     class="page-btn"
+     hx-get="/catalog?q={{ q|urlencode }}&offset={{ (current_page - 2) * limit }}&limit={{ limit }}"
+     hx-target="#catalog-results"
+     hx-swap="innerHTML"
+     hx-push-url="true">←</a>
+  {% endif %}
+
+  {% for page_num in range(1, total_pages + 1) %}
+    {% if page_num == current_page %}
+    <span class="page-btn active" aria-current="page">{{ page_num }}</span>
+    {% elif page_num <= 3 or page_num > total_pages - 2 or (page_num - current_page)|abs <= 1 %}
+    <a href="/catalog?q={{ q|urlencode }}&offset={{ (page_num - 1) * limit }}&limit={{ limit }}"
+       class="page-btn"
+       hx-get="/catalog?q={{ q|urlencode }}&offset={{ (page_num - 1) * limit }}&limit={{ limit }}"
+       hx-target="#catalog-results"
+       hx-swap="innerHTML"
+       hx-push-url="true">{{ page_num }}</a>
+    {% elif page_num == 4 and current_page > 4 %}
+    <span class="page-btn" style="border:none; cursor:default;">…</span>
+    {% elif page_num == total_pages - 2 and current_page < total_pages - 3 %}
+    <span class="page-btn" style="border:none; cursor:default;">…</span>
+    {% endif %}
+  {% endfor %}
+
+  {% if current_page < total_pages %}
+  <a href="/catalog?q={{ q|urlencode }}&offset={{ current_page * limit }}&limit={{ limit }}"
+     class="page-btn"
+     hx-get="/catalog?q={{ q|urlencode }}&offset={{ current_page * limit }}&limit={{ limit }}"
+     hx-target="#catalog-results"
+     hx-swap="innerHTML"
+     hx-push-url="true">→</a>
+  {% endif %}
+</nav>
+{% endif %}
+
+{% elif q %}
+<div class="catalog-empty">
+  <p>{{ t('catalog.empty_search', lang, q=q) }}</p>
+</div>
+{% else %}
+<div class="catalog-empty">
+  <p>{{ t('catalog.empty', lang) }}</p>
+  {% if user %}
+  <p style="margin-top: 8px;"><a href="/" class="login-link">{{ t('catalog.empty_hint_auth', lang) }}</a></p>
+  {% endif %}
+</div>
+{% endif %}

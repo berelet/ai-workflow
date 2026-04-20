@@ -1,0 +1,419 @@
+<div id="tab-members" x-data="membersTab()">
+
+  <!-- Header with title + invite button -->
+  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+    <h2 style="font-size:15px; font-weight:600; color:var(--text-primary); margin:0;">
+      {{ t('members.title', lang) }}
+    </h2>
+    {% if user_role == 'owner' %}
+    <button class="btn-approve" @click="inviteOpen = true" style="padding:6px 14px;">
+      + {{ t('members.invite', lang) }}
+    </button>
+    {% endif %}
+  </div>
+
+  <!-- Members list -->
+  <div id="members-list" class="members-list"
+       hx-get="/ui/partials/tabs/members?project={{ project }}&partial=list"
+       hx-trigger="refreshMembersList from:body"
+       hx-swap="innerHTML">
+    {% include "partials/tabs/_members_list.html" %}
+  </div>
+
+  <!-- Pending requests section (owner only) -->
+  {% if user_role == 'owner' %}
+  <div style="margin-top:24px;">
+    <h3 style="font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:12px;">
+      {{ t('members.requests_title', lang) }}
+      {% if pending_requests|length > 0 %}
+      <span class="tab-badge">{{ pending_requests|length }}</span>
+      {% endif %}
+    </h3>
+    <div id="pending-requests-section">
+      {% if pending_requests|length == 0 %}
+      <div style="padding:16px; color:var(--text-muted); font-size:12px;">
+        {{ t('members.no_requests', lang) }}
+      </div>
+      {% else %}
+        {% for jr in pending_requests %}
+        <div class="pending-row" id="pending-{{ jr.id }}">
+          <div class="member-avatar">{{ jr.user.display_name[:1]|upper if jr.user.display_name else jr.user.email[:1]|upper }}</div>
+          <div class="member-info">
+            <div class="member-name">{{ jr.user.display_name or jr.user.email }}</div>
+            <div class="member-email">{{ jr.user.email }}</div>
+            <div class="member-date">{{ jr.created_at.strftime('%d.%m.%Y %H:%M') }}</div>
+            {% if jr.message %}
+            <div class="join-request-message">"{{ jr.message }}"</div>
+            {% endif %}
+          </div>
+          <div class="member-actions">
+            <button class="btn-approve"
+                    @click="openApproveModal('{{ jr.id }}', {{ (jr.user.display_name or jr.user.email)|tojson|safe }})">
+              {{ t('join_requests.approve', lang) }}
+            </button>
+            <button class="btn-reject"
+                    hx-patch="/api/projects/{{ project }}/join-requests/{{ jr.id }}?action=reject"
+                    hx-target="#pending-{{ jr.id }}"
+                    hx-swap="outerHTML"
+                    hx-disable-elt="this">
+              {{ t('join_requests.reject', lang) }}
+            </button>
+          </div>
+        </div>
+        {% endfor %}
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Approve modal -->
+  <template x-teleport="body">
+    <div class="modal-overlay" x-show="approveOpen" x-cloak @click.self="approveOpen = false"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:leave="transition ease-in duration-100">
+      <div class="modal-content" @click.outside="approveOpen = false">
+        <h3>{{ t('members.approve_title', lang) }}</h3>
+        <p x-text="approveName"></p>
+        <label>{{ t('members.select_role', lang) }}</label>
+        <select x-model="approveRole">
+          <option value="viewer">{{ t('role.viewer', lang) }}</option>
+          <option value="developer">{{ t('role.developer', lang) }}</option>
+          <option value="editor">{{ t('role.editor', lang) }}</option>
+        </select>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="approveOpen = false">{{ t('members.cancel', lang) }}</button>
+          <button class="btn-approve" @click="submitApprove()" :disabled="approveLoading">
+            {{ t('join_requests.approve', lang) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Delete confirm modal -->
+  <template x-teleport="body">
+    <div class="modal-overlay" x-show="deleteOpen" x-cloak @click.self="deleteOpen = false"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:leave="transition ease-in duration-100">
+      <div class="modal-content" @click.outside="deleteOpen = false">
+        <h3>{{ t('members.remove', lang) }}</h3>
+        <p x-text="deleteMessage"></p>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="deleteOpen = false">{{ t('members.cancel', lang) }}</button>
+          <button class="btn-danger" @click="submitDelete()" :disabled="deleteLoading">
+            {{ t('members.remove_btn', lang) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Downgrade confirm modal -->
+  <template x-teleport="body">
+    <div class="modal-overlay" x-show="downgradeOpen" x-cloak @click.self="cancelDowngrade()"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:leave="transition ease-in duration-100">
+      <div class="modal-content" @click.outside="cancelDowngrade()">
+        <h3>{{ t('members.change_role', lang) }}</h3>
+        <p x-text="downgradeMessage"></p>
+        <div class="modal-actions">
+          <button class="btn-cancel" @click="cancelDowngrade()">{{ t('members.cancel', lang) }}</button>
+          <button class="btn-danger" @click="submitDowngrade()" :disabled="downgradeLoading">
+            {{ t('members.confirm_btn', lang) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <!-- Invite modal -->
+  <template x-teleport="body">
+    <div class="modal-overlay" x-show="inviteOpen" x-cloak @click.self="closeInvite()"
+         x-transition:enter="transition ease-out duration-150"
+         x-transition:leave="transition ease-in duration-100">
+      <div class="modal-content" @click.outside="closeInvite()" style="min-width:380px;">
+        <h3>{{ t('members.invite_title', lang) }}</h3>
+        <input type="text"
+               x-model="inviteQuery"
+               @input.debounce.300ms="searchUsers()"
+               placeholder="{{ t('members.search_placeholder', lang) }}"
+               style="width:100%; padding:8px 10px; font-size:12px; font-family:var(--font);
+                      background:var(--bg-primary); color:var(--text-primary);
+                      border:1px solid var(--border); border-radius:var(--radius-sm);
+                      outline:none; box-sizing:border-box;"
+               @focus="if(inviteQuery.length >= 2) searchUsers()"
+               x-ref="inviteInput">
+
+        <!-- Search results -->
+        <div style="margin-top:8px; max-height:220px; overflow-y:auto;">
+          <template x-if="inviteSearching">
+            <div style="padding:12px; color:var(--text-muted); font-size:11px; text-align:center;">...</div>
+          </template>
+          <template x-if="!inviteSearching && inviteQuery.length >= 2 && inviteResults.length === 0">
+            <div style="padding:12px; color:var(--text-muted); font-size:11px; text-align:center;">
+              {{ t('members.no_results', lang) }}
+            </div>
+          </template>
+          <template x-for="u in inviteResults" :key="u.id">
+            <div :style="'display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:4px; border-radius:var(--radius-sm); cursor:pointer; transition:background 0.1s; '
+                  + (inviteSelectedId === u.id ? 'background:var(--bg-tertiary); border:1px solid var(--accent);' : 'background:var(--bg-secondary); border:1px solid var(--border);')"
+                 @click="selectInviteUser(u)">
+              <div class="member-avatar" style="width:28px; height:28px; font-size:11px;"
+                   x-text="(u.display_name || u.email).charAt(0).toUpperCase()"></div>
+              <div style="flex:1; min-width:0;">
+                <div style="font-size:11px; font-weight:500; color:var(--text-primary);" x-text="u.display_name || u.email"></div>
+                <div style="font-size:10px; color:var(--text-muted);" x-text="u.email"></div>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <!-- Role select + add button -->
+        <div x-show="inviteSelectedId" x-cloak style="margin-top:12px; display:flex; gap:8px; align-items:center;">
+          <span style="font-size:11px; color:var(--text-secondary); flex-shrink:0;">{{ t('members.select_role', lang) }}:</span>
+          <select x-model="inviteRole" class="role-select" style="flex:1; margin-bottom:0;">
+            <option value="viewer">{{ t('role.viewer', lang) }}</option>
+            <option value="developer">{{ t('role.developer', lang) }}</option>
+            <option value="editor">{{ t('role.editor', lang) }}</option>
+          </select>
+        </div>
+
+        <div class="modal-actions" style="margin-top:16px;">
+          <button class="btn-cancel" @click="closeInvite()">{{ t('members.cancel', lang) }}</button>
+          <button class="btn-approve" @click="submitInvite()" :disabled="!inviteSelectedId || inviteLoading">
+            {{ t('members.add_btn', lang) }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </template>
+</div>
+
+<script>
+function membersTab() {
+  const roleRank = { viewer: 0, developer: 1, editor: 2, owner: 3 };
+  const projectSlug = '{{ project }}';
+
+  return {
+    // Approve modal state
+    approveOpen: false,
+    approveRequestId: '',
+    approveName: '',
+    approveRole: 'viewer',
+    approveLoading: false,
+
+    // Delete modal state
+    deleteOpen: false,
+    deleteMemberId: '',
+    deleteName: '',
+    deleteMessage: '',
+    deleteLoading: false,
+
+    // Downgrade modal state
+    downgradeOpen: false,
+    downgradeMemberId: '',
+    downgradeNewRole: '',
+    downgradeMessage: '',
+    downgradeLoading: false,
+    downgradeSelectEl: null,
+    downgradeOldRole: '',
+
+    // Invite modal state
+    inviteOpen: false,
+    inviteQuery: '',
+    inviteResults: [],
+    inviteSearching: false,
+    inviteSelectedId: '',
+    inviteSelectedName: '',
+    inviteRole: 'viewer',
+    inviteLoading: false,
+
+    openApproveModal(requestId, name) {
+      this.approveRequestId = requestId;
+      this.approveName = name;
+      this.approveRole = 'viewer';
+      this.approveOpen = true;
+    },
+
+    async submitApprove() {
+      this.approveLoading = true;
+      try {
+        const resp = await fetch(
+          `/api/projects/${projectSlug}/join-requests/${this.approveRequestId}?action=approve&role=${this.approveRole}`,
+          { method: 'PATCH', headers: { 'HX-Request': 'true' } }
+        );
+        if (resp.ok) {
+          const pendingEl = document.getElementById(`pending-${this.approveRequestId}`);
+          if (pendingEl) pendingEl.remove();
+          // Check if no more pending rows remain
+          const section = document.getElementById('pending-requests-section');
+          if (section && section.querySelectorAll('.pending-row').length === 0) {
+            section.innerHTML = '<div style="padding:16px; color:var(--text-muted); font-size:12px;">{{ t("members.no_requests", lang) }}</div>';
+          }
+          document.body.dispatchEvent(new CustomEvent('refreshMembersList'));
+        }
+      } catch (e) {
+        console.error('Approve failed:', e);
+      } finally {
+        this.approveLoading = false;
+        this.approveOpen = false;
+      }
+    },
+
+    openDeleteModal(memberId, name) {
+      this.deleteMemberId = memberId;
+      this.deleteName = name;
+      this.deleteMessage = '{{ t("members.remove_confirm", lang) }}'.replace('{name}', name);
+      this.deleteOpen = true;
+    },
+
+    async submitDelete() {
+      this.deleteLoading = true;
+      try {
+        const resp = await fetch(
+          `/api/projects/${projectSlug}/members/${this.deleteMemberId}`,
+          { method: 'DELETE' }
+        );
+        if (resp.ok) {
+          const row = document.getElementById(`member-${this.deleteMemberId}`);
+          if (row) row.remove();
+        }
+      } catch (e) {
+        console.error('Delete failed:', e);
+      } finally {
+        this.deleteLoading = false;
+        this.deleteOpen = false;
+      }
+    },
+
+    handleRoleChange(event, memberId, memberName, currentRole) {
+      const newRole = event.target.value;
+      if (newRole === currentRole) return;
+
+      const newRank = roleRank[newRole] || 0;
+      const oldRank = roleRank[currentRole] || 0;
+
+      if (newRank < oldRank) {
+        this.downgradeMemberId = memberId;
+        this.downgradeNewRole = newRole;
+        this.downgradeOldRole = currentRole;
+        this.downgradeSelectEl = event.target;
+        this.downgradeMessage = '{{ t("members.downgrade_confirm", lang) }}'
+          .replace('{name}', memberName)
+          .replace('{old_role}', currentRole)
+          .replace('{new_role}', newRole);
+        this.downgradeOpen = true;
+      } else {
+        this.applyRoleChange(memberId, newRole, event.target, currentRole);
+      }
+    },
+
+    cancelDowngrade() {
+      if (this.downgradeSelectEl) {
+        this.downgradeSelectEl.value = this.downgradeOldRole;
+      }
+      this.downgradeOpen = false;
+    },
+
+    async submitDowngrade() {
+      this.downgradeLoading = true;
+      await this.applyRoleChange(
+        this.downgradeMemberId,
+        this.downgradeNewRole,
+        this.downgradeSelectEl,
+        this.downgradeOldRole
+      );
+      this.downgradeLoading = false;
+      this.downgradeOpen = false;
+    },
+
+    async applyRoleChange(memberId, newRole, selectEl, oldRole) {
+      try {
+        const resp = await fetch(
+          `/api/projects/${projectSlug}/members/${memberId}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
+            body: JSON.stringify({ role: newRole }),
+          }
+        );
+        if (resp.ok) {
+          const html = await resp.text();
+          const row = document.getElementById(`member-${memberId}`);
+          if (row) {
+            row.outerHTML = html;
+          }
+        } else {
+          if (selectEl) selectEl.value = oldRole;
+        }
+      } catch (e) {
+        console.error('Role change failed:', e);
+        if (selectEl) selectEl.value = oldRole;
+      }
+    },
+
+    // ── Invite ──
+    async searchUsers() {
+      const q = this.inviteQuery.trim();
+      if (q.length < 2) { this.inviteResults = []; return; }
+      this.inviteSearching = true;
+      try {
+        const resp = await fetch(`/api/users/search?q=${encodeURIComponent(q)}&project=${projectSlug}`);
+        if (resp.ok) {
+          this.inviteResults = await resp.json();
+        }
+      } catch (e) {
+        console.error('Search failed:', e);
+      } finally {
+        this.inviteSearching = false;
+      }
+    },
+
+    selectInviteUser(u) {
+      this.inviteSelectedId = u.id;
+      this.inviteSelectedName = u.display_name || u.email;
+    },
+
+    closeInvite() {
+      this.inviteOpen = false;
+      this.inviteQuery = '';
+      this.inviteResults = [];
+      this.inviteSelectedId = '';
+      this.inviteSelectedName = '';
+      this.inviteRole = 'viewer';
+    },
+
+    async submitInvite() {
+      if (!this.inviteSelectedId) return;
+      this.inviteLoading = true;
+      try {
+        const resp = await fetch(`/api/projects/${projectSlug}/invite`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'HX-Request': 'true' },
+          body: JSON.stringify({
+            user_id: this.inviteSelectedId,
+            role: this.inviteRole,
+          }),
+        });
+        if (resp.ok) {
+          const html = await resp.text();
+          const list = document.getElementById('members-list');
+          if (list) list.insertAdjacentHTML('beforeend', html);
+          // Remove from search results
+          this.inviteResults = this.inviteResults.filter(u => u.id !== this.inviteSelectedId);
+          this.inviteSelectedId = '';
+          this.inviteSelectedName = '';
+          // If no more results, close
+          if (this.inviteResults.length === 0) {
+            this.closeInvite();
+          }
+        }
+      } catch (e) {
+        console.error('Invite failed:', e);
+      } finally {
+        this.inviteLoading = false;
+      }
+    },
+  };
+}
+</script>
